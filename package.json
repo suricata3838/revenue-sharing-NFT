@@ -1,18 +1,19 @@
 {
   "name": "revenue-sharing-contract",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The revenue sharing contract for Mitama NFT project",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "zkitty (https://zkitty.me)",
+  "license": "MIT",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
-    "ethers": "^5.6.9",
+    "dotenv": "^16.0.2",
+    "ethers": "^5.7.0",
     "hardhat": "^2.10.1"
   },
   "dependencies": {
@@ -21,5 +22,16 @@
     "firebase": "^9.9.2",
     "firebase-admin": "^11.0.1",
     "ws": "^8.8.1"
-  }
+  },
+  "keywords": [
+    "NFT",
+    "Smart Contract",
+    "Solidity",
+    "Hardhat",
+    "Pinata",
+    "Revenue share",
+    "revenue",
+    "Opensea"
+  ],
+  "homepage": "https://github.com/suricata3838/revenue-sharing-NFT"
 }

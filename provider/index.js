@@ -3,7 +3,39 @@ import { WebSocket } from 'ws';
 import { initializeApp } from "firebase/app";
 import { getFirestore, Timestamp } from "firebase/firestore";
 import { collection, setDoc, addDoc, getDocs, where, query, orderBy, limit } from "firebase/firestore";
-import { utils } from "ethers";
+import { ethers, utils } from "ethers";
+import * as dotenv from "dotenv";
+dotenv.config();
+// import { ethers } from "hardhat";
+import * as abi from "../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.json" assert { type: 'json' };
+
+
+// get deployer(Admin) address of revenuBuffer contract
+const deployer = process.env.DEPLOYER;
+// deployed RevenueBuffer contract on Rinkeby
+const address = '0x23Cb1a2912772E413Eceb469Cd4b4F20a3FA6386';
+// Provider
+const network = ethers.providers.getNetwork("rinkeby");
+const alchemyProvider = new ethers.providers.AlchemyProvider(network, process.env.APIKEY);
+// Signer(deployer address derived from PRIVKEY)
+const signer = new ethers.Wallet(process.env.PRIVKEY, alchemyProvider);
+// get contract instance
+const RevenueBuffer = await new ethers.Contract(address, abi.default.abi, signer);
+const revenueBuffer = await RevenueBuffer.attach(address);
+
+const updateRequest = async (tokenId, members) => {
+  try {
+    // Write contract
+    const tx = await revenueBuffer.addRequest(tokenId, members);
+    console.log("update tx-hash:", tx.hash);
+    await tx.wait();
+    // Read contract
+    const receiveId = ethers.utils.formatEther(await revenueBuffer.receiveId());
+    console.log("current receiveId:", receiveId);
+  }catch(e){
+    console.error(e);
+  }
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyC0pHf0Zbw53XEJgMmZjSQUiOMlgbZ1oFU",
@@ -27,7 +59,7 @@ const client = new OpenSeaStreamClient({
     }
   });
 
-const tokenLevelList = [0, 0.01, 0.5, 1.0, 3.0, 5.0]; //ETH
+const tokenLevelList = [0, 0.01, 0.5, 1.0, 3.0, 5.0]; //ETH for LevelUp of DynamicNFT
 const getTokenLevel = (price) => {
   var level;
   var tokenLEvelPrice;
@@ -144,7 +176,7 @@ const getItemSoldEvents = async(nft_id) => {
 const getItemHolderList = async(nft_id) => {
   const itemSoldRef = collection(db, "itemSoldEvent");
   // TODO: Limit(number) needs to be update to 7
-  const q = query(itemSoldRef, where("nft_id", "==", nft_id), orderBy("sale_price", "desc"), limit(5));
+  const q = query(itemSoldRef, where("nft_id", "==", nft_id), orderBy("sale_price", "desc"), limit(7));
   try {
     const querySnapshot = await getDocs(q);
     var holderAddressList= [];
@@ -157,25 +189,27 @@ const getItemHolderList = async(nft_id) => {
   }
 }
 
+// TODO: call revenueBuffer contract
 // run onItemosld
 const main = async (event) => {
   const item = parseItemSoldEvent(event);
+  const tokenId = item.nft_id;
   const currentPrice = item.sale_price;
   const makerAddress = item.maker_address;
   console.log("currentPrice:", currentPrice);
   const priceLastSold = await getItemPriceLastSold(item.nft_id);
-  const isPriceRaised = currentPrice > priceLastSold;
-  console.log("level:", getTokenLevel(currentPrice), "<->", getTokenLevel(priceLastSold));
+  const isPriceRaised = currentPrice >= 1.1 * priceLastSold; // Buyer nees to pay for 1.1x price. 
+  console.log("level:", getTokenLevel(currentPrice), "<=", getTokenLevel(priceLastSold));
   const isLevelRaised = getTokenLevel(currentPrice) > getTokenLevel(priceLastSold);
   console.log("isPriceRaised", isPriceRaised);
   if(isPriceRaised) {
     await injectItem(item);
     const holderAddressList = await getItemHolderList(item.nft_id);
     console.log(holderAddressList);
-    // call addRequest(uint tokenId, address[]) of RevenueBuffer
+    await updateRequest(tokenId, holderAddressList);
     // call mint of holderPassNFT
+    console.log("isLevelRaised", isLevelRaised);
   };
-  console.log("isLevelRaised", isLevelRaised);
   if(isLevelRaised) {
     console.log("token level up!");
     const level = getTokenLevel(currentPrice);
@@ -184,5 +218,5 @@ const main = async (event) => {
 }
 
 // await injectItem(parseItemSoldEvent(sampleEvent));
-await main(sampleEvent);
-// client.onItemSold('henohenomoheji', (e) => main(e));
+// await main(sampleEvent);
+client.onItemSold('henohenomoheji', (e) => main(e));

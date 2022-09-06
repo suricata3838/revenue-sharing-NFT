@@ -37,13 +37,16 @@ contract RevenueBuffer is AccessControl{
   event WithdrawerAdded(address withdrawer);
   event WithdrawerRemoved(address withdrawer);
 
-  function addRequest(uint tokenId, address[] memory m) external onlyRole(DEFAULT_ADMIN_ROLE){
-    // require(requestId == receiveId -1, "Invalid requestId");
+  function addRequest(uint tokenId, address[] memory m) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    // TODO: commentout
+    require(requestId == receiveId -1, "Invalid requestId");
     ++requestId;
     uint256 amount = receiveIdToAmount[requestId];
+    require(amount > 0, "request amount should be > 0");
     Request memory request =  Request(tokenId, amount, m);
     requestIdToRequest[requestId] = request;
     (bool res, uint256 revenuePerMember) = amount.tryDiv(m.length);
+    require(res, "Failed to devide receive amount");
     for(uint i=0; i<m.length; i++) {
       claimablePerAddress[m[i]] += revenuePerMember;
       MemberAmount memory ma = MemberAmount(m[i], revenuePerMember);
@@ -62,9 +65,7 @@ contract RevenueBuffer is AccessControl{
     require(withdrawnId < requestId, "No Withdrawable Request");
     // transfer claimablePerAddress to all addresses if the amount is not zero.
     // how to get the wallet list: requestIdToRequest[requestId(itterable)].members
-    uint256 first = withdrawnId + 1;
-    uint256 last = requestId;
-    for(uint i=first; i<=last; i++) {
+    for(uint i=withdrawnId; i<=requestId; i++) {
       address[] memory m = requestIdToRequest[i].members;
       for (uint j=0; j<m.length; j++) {
         if(claimablePerAddress[m[j]] > 0){
