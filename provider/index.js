@@ -188,7 +188,6 @@ const getItemHolderList = async(nft_id) => {
   }
 }
 
-// TODO: call revenueBuffer contract
 // run onItemosld
 const main = async (event) => {
   const item = parseItemSoldEvent(event);

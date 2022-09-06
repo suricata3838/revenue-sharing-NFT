@@ -14,13 +14,12 @@ pragma solidity ^0.8.9;
 // MitamaTest is Dynamic ERC721
 // each tokenId has 6 upgradable image and attibute on this matadata.
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract DynamicNFT is ERC721Enumerable, Ownable{
+contract DynamicNFT is ERC721A, Ownable{
     using SafeMath for uint256;
     using Strings for uint256;
     using Strings for uint8;
@@ -44,7 +43,7 @@ contract DynamicNFT is ERC721Enumerable, Ownable{
         uint256 maxTokens,
         uint256 maxMints   
     )
-    ERC721 (name, symbol)
+    ERC721A (name, symbol)
     {
         setBaseURI(baseURI);
         setTokenPrice(tokenPrice);
@@ -77,7 +76,7 @@ contract DynamicNFT is ERC721Enumerable, Ownable{
     /* ERC721 primitive */
     // TODO: set metadata json files on IPFS and get CID
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        _requireMinted(tokenId);
+        require(_exists(tokenId), "Invalid tokenId");
 
         string memory baseURI = _baseURI();
         uint8 tokenLevel_ = tokenLevel[tokenId];
@@ -90,29 +89,8 @@ contract DynamicNFT is ERC721Enumerable, Ownable{
         // totalSuply() is inherited from ERC721Enumerable.
         require(totalSupply().add(numberOfTokens) <= MAX_TOKENS, "Purchase would exceed max supply of Tokens");
         require(TOKEN_PRICE.mul(numberOfTokens) <= msg.value, "Ether value sent is not correct");
-
-        for(uint256 i = 0; i < numberOfTokens; i++) {
-            uint256 mintIndex = totalSupply();
-            if (mintIndex < MAX_TOKENS) {
-                _safeMint(msg.sender, mintIndex);
-            }
-        }
-    }
-
-    /* for Airdrop */
-    // TODO: update
-    function airdrop(uint256 numberOfTokens) public payable {
-        require(numberOfTokens <= MAX_MINTS, "Can only mint max purchase of tokens at a time");
-        // totalSuply() is inherited from ERC721Enumerable.
-        require(totalSupply().add(numberOfTokens) <= MAX_TOKENS, "Purchase would exceed max supply of Tokens");
-        require(TOKEN_PRICE.mul(numberOfTokens) <= msg.value, "Ether value sent is not correct");
-
-        for(uint256 i = 0; i < numberOfTokens; i++) {
-            uint256 mintIndex = totalSupply();
-            if (mintIndex < MAX_TOKENS) {
-                _safeMint(msg.sender, mintIndex);
-            }
-        }
+        // ERC721A's _mint(to, quantity)
+        _mint(msg.sender, numberOfTokens);
     }
 
     /* Update tokenURI */
