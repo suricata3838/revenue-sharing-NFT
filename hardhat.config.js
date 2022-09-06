@@ -20,6 +20,5 @@ module.exports = {
       polygon: "W38RH21ZF3K4MA6MJU34V5WA5D3B72BV88",
       rinkeby: "PCBEMJAJZDDPQHVW15ZK6Y6NZUS2D3X8Y8"
     }
-  },
-
+  }
 };

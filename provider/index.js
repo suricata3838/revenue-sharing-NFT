@@ -1,29 +1,28 @@
-import { OpenSeaStreamClient, Network } from '@opensea/stream-js';
-import { WebSocket } from 'ws';
-import { initializeApp } from "firebase/app";
-import { getFirestore, Timestamp } from "firebase/firestore";
-import { collection, setDoc, addDoc, getDocs, where, query, orderBy, limit } from "firebase/firestore";
-import { ethers, utils } from "ethers";
-import * as dotenv from "dotenv";
+const { OpenSeaStreamClient, Network }= require('@opensea/stream-js');
+const  { WebSocket }  = require ('ws');
+const { initializeApp }  = require ("firebase/app");
+const { getFirestore, Timestamp }  = require ("firebase/firestore");
+const { collection, setDoc, addDoc, getDocs, where, query, orderBy, limit }  = require ("firebase/firestore");
+const { ethers, utils }  = require ("ethers");
+const dotenv  = require ("dotenv");
 dotenv.config();
-// import { ethers } from "hardhat";
-import * as abi from "../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.json" assert { type: 'json' };
+// const { ethers }  = require "hardhat";
+const abi  =  require ("../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.json");
 
-
-// get deployer(Admin) address of revenuBuffer contract
-const deployer = process.env.DEPLOYER;
-// deployed RevenueBuffer contract on Rinkeby
-const address = '0x23Cb1a2912772E413Eceb469Cd4b4F20a3FA6386';
-// Provider
-const network = ethers.providers.getNetwork("rinkeby");
-const alchemyProvider = new ethers.providers.AlchemyProvider(network, process.env.APIKEY);
-// Signer(deployer address derived from PRIVKEY)
-const signer = new ethers.Wallet(process.env.PRIVKEY, alchemyProvider);
-// get contract instance
-const RevenueBuffer = await new ethers.Contract(address, abi.default.abi, signer);
-const revenueBuffer = await RevenueBuffer.attach(address);
 
 const updateRequest = async (tokenId, members) => {
+  // get deployer(Admin) address of revenuBuffer contract
+  const deployer = process.env.DEPLOYER;
+  // deployed RevenueBuffer contract on Rinkeby
+  const address = '0x23Cb1a2912772E413Eceb469Cd4b4F20a3FA6386';
+  // Provider
+  const network = ethers.providers.getNetwork("rinkeby");
+  const alchemyProvider = new ethers.providers.AlchemyProvider(network, process.env.APIKEY);
+  // Signer(deployer address derived from PRIVKEY)
+  const signer = new ethers.Wallet(process.env.PRIVKEY, alchemyProvider);
+  // get contract instance
+  const RevenueBuffer = await new ethers.Contract(address, abi.default.abi, signer);
+  const revenueBuffer = await RevenueBuffer.attach(address);
   try {
     // Write contract
     const tx = await revenueBuffer.addRequest(tokenId, members);
