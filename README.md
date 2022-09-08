@@ -1,5 +1,5 @@
 # Donation-scheme NTF project
-The name is reveiled when public sale starts.
+Project name will be reveiled when their public sale starts.
 
 ## Feature of project
 - Donation NFT:
