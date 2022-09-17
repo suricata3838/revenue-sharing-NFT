@@ -45,6 +45,8 @@ contract RevenueBuffer is AccessControl{
       _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
   }
 
+  event ReceivedETH(uint256 receivedId, uint256 amount);
+  event ReceivedWETH(uint256 receivedId, uint256 amount);
   event RequestAdded(uint tokenId, uint256 amount, address[] m);
   event WithdrawedETH(address indexed account, uint256 indexed amount);
   event WithdrawedWETH(address indexed account, uint256 indexed amount);
@@ -86,6 +88,7 @@ contract RevenueBuffer is AccessControl{
     ++receiveId;
     receiveIdToPayments[receiveId] = Payment(msg.value, false);
     totalReceivedETH += msg.value;
+    emit ReceivedETH(receiveId, msg.value);
   }
 
   // update receivedWETH
@@ -97,6 +100,7 @@ contract RevenueBuffer is AccessControl{
       totalReceivedWETH += bal - WETHbalance;
       WETHbalance = bal;
     }
+    emit ReceivedWETH(receiveId, msg.value);
   }
 
   function batchWithdraw() external onlyRole(WITHDRAWER_ROLE) payable {
