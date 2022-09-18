@@ -7,6 +7,7 @@ const { ethers, utils }  = require ("ethers");
 const dotenv  = require ("dotenv");
 dotenv.config();
 // const { ethers }  = require "hardhat";
+const firebaseConfig = require("../firebase-config.json");
 const abi  =  require ("../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.json");
 
 
@@ -40,15 +41,6 @@ const updateRequest = async (tokenId, members) => {
     console.error(e);
   }
 }
-
-const firebaseConfig = {
-  apiKey: "AIzaSyC0pHf0Zbw53XEJgMmZjSQUiOMlgbZ1oFU",
-  authDomain: "mitama-solditem-history.firebaseapp.com",
-  projectId: "mitama-solditem-history",
-  storageBucket: "mitama-solditem-history.appspot.com",
-  messagingSenderId: "136704517269",
-  appId: "1:136704517269:web:5a633f81189e39dbda279c"
-};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
