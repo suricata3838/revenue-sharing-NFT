@@ -12,10 +12,15 @@
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
+    "assert": "^2.0.0",
+    "chai": "^4.3.6",
+    "chai-as-promised": "^7.1.1",
+    "crypto-js": "^4.1.1",
     "dotenv": "^16.0.2",
     "erc721a": "^4.2.2",
     "ethers": "^5.7.0",
-    "hardhat": "^2.10.1"
+    "hardhat": "^2.10.1",
+    "merkletreejs": "^0.2.32"
   },
   "dependencies": {
     "@opensea/stream-js": "^0.0.20",

@@ -2,17 +2,30 @@
 pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract RevenueBuffer is AccessControl{
   using SafeMath for uint256;
   uint256 public receiveId;
   uint256 public requestId;
   uint256 public withdrawnId;
+  address public WETH;
 
-  uint public totalReceived;
-  mapping(address=>uint256) public claimablePerAddress;
-  mapping(address=>uint256) public withdrawnPerAddress;
-  mapping(uint256=>uint256) public receiveIdToAmount;
+
+  uint public totalReceivedETH;
+  uint public totalReceivedWETH;
+  uint public WETHbalance;
+  mapping(address=>Amount) public claimablePerAddress;
+  mapping(address=>Amount) public withdrawnPerAddress;
+  struct Amount {
+    uint256 amountETH;
+    uint256 amountWETH;
+  }
+  mapping(uint256=>Payment) public receiveIdToPayments;
+  struct Payment {
+    uint256 amount;
+    bool isWETH;
+  }
   mapping(uint256=>Request) public requestIdToRequest;
   struct Request {
       uint256 tokenId;
@@ -32,68 +45,115 @@ contract RevenueBuffer is AccessControl{
       _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
   }
 
+  event ReceivedETH(uint256 receivedId, uint256 amount);
+  event ReceivedWETH(uint256 receivedId, uint256 amount);
   event RequestAdded(uint tokenId, uint256 amount, address[] m);
-  event Withdrawed(address indexed account, uint256 indexed amount);
+  event WithdrawedETH(address indexed account, uint256 indexed amount);
+  event WithdrawedWETH(address indexed account, uint256 indexed amount);
   event WithdrawerAdded(address withdrawer);
   event WithdrawerRemoved(address withdrawer);
 
+  function setTokenAddress(address token_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+      require(token_ != address(0), "Invalid token address");
+      WETH = token_;
+  }
+
   function addRequest(uint tokenId, address[] memory m) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    // TODO: commentout
+    updateReceivedWETH();
     require(requestId == receiveId -1, "Invalid requestId");
     ++requestId;
-    uint256 amount = receiveIdToAmount[requestId];
+    uint256 amount = receiveIdToPayments[requestId].amount;
+    bool isWETH = receiveIdToPayments[requestId].isWETH;
     require(amount > 0, "request amount should be > 0");
+    //amount is given by receivedIdToPayments
     Request memory request =  Request(tokenId, amount, m);
     requestIdToRequest[requestId] = request;
     (bool res, uint256 revenuePerMember) = amount.tryDiv(m.length);
     require(res, "Failed to devide receive amount");
     for(uint i=0; i<m.length; i++) {
-      claimablePerAddress[m[i]] += revenuePerMember;
+      if (isWETH) {
+        claimablePerAddress[m[i]].amountWETH += revenuePerMember;
+      } else {
+        claimablePerAddress[m[i]].amountETH += revenuePerMember;
+      }
       MemberAmount memory ma = MemberAmount(m[i], revenuePerMember);
       tokenIdToMemberAmounts[tokenId].push(ma);
     }
     emit RequestAdded(tokenId, amount, m);
   }
 
-  receive () external payable {
+  //receive ETH
+  receive() external payable {
     ++receiveId;
-    receiveIdToAmount[receiveId] = msg.value;
-    totalReceived += msg.value;
+    receiveIdToPayments[receiveId] = Payment(msg.value, false);
+    totalReceivedETH += msg.value;
+    emit ReceivedETH(receiveId, msg.value);
+  }
+
+  // update receivedWETH
+  function updateReceivedWETH() internal {
+    require(WETH != address(0), "failed setTokenAddress");
+    uint256 bal = IERC20(WETH).balanceOf(address(this));
+    if(bal > WETHbalance) {
+      ++receiveId;
+      receiveIdToPayments[receiveId] = Payment(bal - WETHbalance, true);
+      totalReceivedWETH += bal - WETHbalance;
+      WETHbalance = bal;
+    }
+    emit ReceivedWETH(receiveId, msg.value);
   }
 
   function batchWithdraw() external onlyRole(WITHDRAWER_ROLE) payable {
     require(withdrawnId < requestId, "No Withdrawable Request");
     // transfer claimablePerAddress to all addresses if the amount is not zero.
-    // how to get the wallet list: requestIdToRequest[requestId(itterable)].members
+    // to get the wallet list: requestIdToRequest[requestId(itterable)].members
     for(uint i=withdrawnId; i<=requestId; i++) {
       address[] memory m = requestIdToRequest[i].members;
       for (uint j=0; j<m.length; j++) {
-        if(claimablePerAddress[m[j]] > 0){
-          address account = m[j];
-          uint256 payment = claimablePerAddress[account];
-          withdrawnPerAddress[account] += payment;
-          claimablePerAddress[account] = 0;
-          totalReceived -= payment;
-          _transfer(account, payment);
-          emit Withdrawed(account, payment);
+        address account = m[j];
+        if(claimablePerAddress[account].amountETH > 0){
+          uint256 claimableETH = claimablePerAddress[account].amountETH;
+          withdrawnPerAddress[account].amountETH += claimableETH;
+          claimablePerAddress[account].amountETH = 0;
+          totalReceivedETH -= claimableETH;
+          _transfer(account, claimableETH);
+          emit WithdrawedETH(account, claimableETH);
+        }
+        if(claimablePerAddress[account].amountWETH > 0){
+          uint256 claimableWETH = claimablePerAddress[account].amountWETH;
+          withdrawnPerAddress[account].amountWETH += claimableWETH;
+          claimablePerAddress[account].amountWETH = 0;
+          totalReceivedWETH -= claimableWETH;
+          IERC20(WETH).transfer(account, claimableWETH);
+          emit WithdrawedWETH(account, claimableWETH);
         }
       }
     }
     withdrawnId = requestId;
   }
 
-  function withdraw(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable {
-    require(claimablePerAddress[account] > 0, "Account has no claimable amount.");
-    require(claimablePerAddress[account] > amount, "Amount exceeds claimable amount.");
-    claimablePerAddress[account] -= amount;
-    totalReceived -= amount;
-    withdrawnPerAddress[account] += amount;
+  function withdrawETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable {
+    require(claimablePerAddress[account].amountETH > 0, "Account has no claimable amount.");
+    require(claimablePerAddress[account].amountETH > amount, "Amount exceeds claimable amount.");
+    claimablePerAddress[account].amountETH -= amount;
+    totalReceivedETH -= amount;
+    withdrawnPerAddress[account].amountETH += amount;
     _transfer(account, amount);
-    emit Withdrawed(account, amount);
+    emit WithdrawedETH(account, amount);
+  }
+
+  function withdrawWETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable {
+    require(claimablePerAddress[account].amountWETH > 0, "Account has no claimable amount.");
+    require(claimablePerAddress[account].amountWETH > amount, "Amount exceeds claimable amount.");
+    claimablePerAddress[account].amountWETH -= amount;
+    totalReceivedWETH -= amount;
+    withdrawnPerAddress[account].amountWETH += amount;
+    IERC20(WETH).transfer(account, amount);
+    emit WithdrawedWETH(account, amount);
   }
   
   ////
-  // add and remove provider_role to an address
+  // add and remove Withdrawer
   ////
 
   function addProvider(address withdrawer) external onlyRole(DEFAULT_ADMIN_ROLE) {
