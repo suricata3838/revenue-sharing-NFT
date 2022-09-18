@@ -1,3 +1,4 @@
+// reference: https://github.com/miguelmota/merkletreejs-nft-whitelist
 const { expect, use } = require('chai')
 const { ethers } = require('hardhat')
 const { MerkleTree } = require('merkletreejs')
