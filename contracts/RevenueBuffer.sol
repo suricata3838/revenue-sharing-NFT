@@ -59,7 +59,6 @@ contract RevenueBuffer is AccessControl{
   }
 
   function addRequest(uint tokenId, address[] memory m) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    // TODO: check any update of receiveing amount of WETH.
     updateReceivedWETH();
     require(requestId == receiveId -1, "Invalid requestId");
     ++requestId;
@@ -93,6 +92,7 @@ contract RevenueBuffer is AccessControl{
 
   // update receivedWETH
   function updateReceivedWETH() internal {
+    require(WETH != address(0), "failed setTokenAddress");
     uint256 bal = IERC20(WETH).balanceOf(address(this));
     if(bal > WETHbalance) {
       ++receiveId;
