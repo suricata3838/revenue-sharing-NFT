@@ -13,16 +13,21 @@ const abi  =  require ("../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.j
 const updateRequest = async (tokenId, members) => {
   // get deployer(Admin) address of revenuBuffer contract
   const deployer = process.env.DEPLOYER;
-  // deployed RevenueBuffer contract on Rinkeby
-  const address = '0x23Cb1a2912772E413Eceb469Cd4b4F20a3FA6386';
+  // deployed RevenueBuffer contract address on Rinkeby
+  const address = '0xf4102568FeBBbca13C8814501f598080e32A503E';
   // Provider
   const network = ethers.providers.getNetwork("rinkeby");
   const alchemyProvider = new ethers.providers.AlchemyProvider(network, process.env.APIKEY);
   // Signer(deployer address derived from PRIVKEY)
   const signer = new ethers.Wallet(process.env.PRIVKEY, alchemyProvider);
-  // get contract instance
-  const RevenueBuffer = await new ethers.Contract(address, abi.default.abi, signer);
+  // get contract instancess
+  const RevenueBuffer = await new ethers.Contract(address, abi.abi, signer);
   const revenueBuffer = await RevenueBuffer.attach(address);
+  // Confirm: setTokenAddress() is ready.
+  const address_WETH = await revenueBuffer.WETH();
+  console.log("address_WETH:", address_WETH);
+  if(address_WETH == "0x00") return;
+
   try {
     // Write contract
     const tx = await revenueBuffer.addRequest(tokenId, members);
@@ -80,9 +85,9 @@ const sampleEvent = {
         "item": {
           "nft_id":"ethereum/0x8a90cab2b38dba80c64b7734e58ee1db38b8992e/222",
           "permalink":"https://opensea.io/assets/0x8a90cab2b38dba80c64b7734e58ee1db38b8992e/222",
-          "chain": { "name": "ethereum" },
+          "chain": { "name": "Rinkeby" },
           "metadata": {
-              "name": "Doodle #222",
+              "name": "Mitama test #1",
               "description": "A community-driven collectibles project featuring art by Burnt Toast. Doodles come...",
               "image_url": "https://lh3.googleusercontent.com/R7wtoDNdmM7GhTvVjr4JGA6q60z44Hn2nIymPjAEXcjnD8oBPxQYPA1GkrCnvepPM1Sc8DlIHZql4Yucj4ger1jnWmxmuRFwIC_JRw",
               "animation_url": null,
@@ -93,13 +98,13 @@ const sampleEvent = {
         "payment_token": {
           "address": "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619",
           "decimals": 18,
-          "eth_price": "1",
-          "name": "Ether",
-          "symbol": "ETH",
+          "eth_price": "0.01",
+          "name": "WrappedEther",
+          "symbol": "WETH",
           "usd_price": "3067.19"
         },
         "quantity": 1,
-        "sale_price": 100500000000000000,
+        "sale_price": 100000000000000000,
         "taker": { "address": "0x338571a641d8c43f9e5a306300c5d89e0cb2cfaf" },
         "transaction": {
           "hash": "0x57135fca40b927fbd741f5a21626c1c4c84e7c1036bb50d3158e2fa62a80c941",
@@ -217,4 +222,6 @@ const main = async (event) => {
 
 // await injectItem(parseItemSoldEvent(sampleEvent));
 // await main(sampleEvent);
-client.onItemSold('henohenomoheji', (e) => main(e));
+
+// client.onItemSold('henohenomoheji', (e) => main(e));
+client.onItemSold('mitama-test-1', (e) => main(e));
