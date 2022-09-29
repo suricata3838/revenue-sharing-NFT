@@ -17,6 +17,7 @@ pragma solidity ^0.8.9;
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract DynamicNFT is ERC721A, Ownable{
     using SafeMath for uint256;

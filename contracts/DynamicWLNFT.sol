@@ -90,21 +90,21 @@ contract DynamicNFT is ERC721A, Ownable{
     }
     
     /* Main Sale */
-    function mintTokens(uint256 numberOfTokens) public payable {
+    function mintPublic(uint256 numberOfTokens) public payable {
         require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "No more claim");
         // totalSuply() is inherited from ERC721Enumerable.
         require(totalSupply().add(numberOfTokens) <= MAX_TOKENS, "Purchase would exceed max supply of Tokens");
         require(TOKEN_PRICE.mul(numberOfTokens) <= msg.value, "Ether value sent is not correct");
         // ERC721A's _mint(to, quantity)
-        _mint(msg.sender, numberOfTokens);
+        _safeMint(msg.sender, numberOfTokens);
     }
 
     /* Mint for WL */
-    function mintWLTokens(bytes32[] calldata merkleProof, uint256 numberOfTokens) public payable {
+    function mintWL(bytes32[] calldata merkleProof, uint256 numberOfTokens) public payable {
         require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "No more claim");
         claimedAmount[msg.sender] += numberOfTokens;
         require(MerkleProof.verify(merkleProof, merkleRoot, toBytes32(msg.sender)), "Invalid MerkleProof");
-        _mint(msg.sender, numberOfTokens);
+        _safeMint(msg.sender, numberOfTokens);
     }
 
     function toBytes32(address addr) pure internal returns (bytes32) {
