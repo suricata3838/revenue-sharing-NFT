@@ -18,9 +18,9 @@ import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "./MerkleWhitelist.sol";
 
-contract DynamicNFT is ERC721A, Ownable{
+contract DynamicWLNFT is ERC721A, Ownable, MerkleWhitelist{
     using SafeMath for uint256;
     using Strings for uint256;
     using Strings for uint8;
@@ -30,7 +30,7 @@ contract DynamicNFT is ERC721A, Ownable{
     uint256 public MAX_TOKENS;
     uint256 public MAX_MINTS;
     mapping(address => uint256) public claimedAmount;
-    bytes32 immutable public merkleRoot;
+
 
 
     // Metadata
@@ -45,8 +45,7 @@ contract DynamicNFT is ERC721A, Ownable{
         string memory baseURI,
         uint256 tokenPrice,
         uint256 maxTokens,
-        uint256 maxMints,
-        bytes32 _merkleRoot
+        uint256 maxMints
     )
     ERC721A (name, symbol)
     {
@@ -54,7 +53,6 @@ contract DynamicNFT is ERC721A, Ownable{
         setTokenPrice(tokenPrice);
         setMaxTokens(maxTokens);
         setMaxMints(maxMints);
-        merkleRoot = _merkleRoot;
     }
 
     /* ERC721 Setters */
@@ -91,7 +89,7 @@ contract DynamicNFT is ERC721A, Ownable{
     
     /* Main Sale */
     function mintPublic(uint256 numberOfTokens) public payable {
-        require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "No more claim");
+        require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "Total amount claimed exceeds max 5 NFTs!");
         // totalSuply() is inherited from ERC721Enumerable.
         require(totalSupply().add(numberOfTokens) <= MAX_TOKENS, "Purchase would exceed max supply of Tokens");
         require(TOKEN_PRICE.mul(numberOfTokens) <= msg.value, "Ether value sent is not correct");
@@ -100,15 +98,14 @@ contract DynamicNFT is ERC721A, Ownable{
     }
 
     /* Mint for WL */
-    function mintWL(bytes32[] calldata merkleProof, uint256 numberOfTokens) public payable {
-        require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "No more claim");
+    function mintPublicWL(bytes32[] calldata merkleProof, uint256 numberOfTokens)
+        public
+        payable 
+        onlyPublicWhitelist(merkleProof)
+    {
+        require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "Total amount claimed exceeds max 5 NFTs!");
         claimedAmount[msg.sender] += numberOfTokens;
-        require(MerkleProof.verify(merkleProof, merkleRoot, toBytes32(msg.sender)), "Invalid MerkleProof");
         _safeMint(msg.sender, numberOfTokens);
-    }
-
-    function toBytes32(address addr) pure internal returns (bytes32) {
-        return bytes32(uint256(uint160(addr)));
     }
 
     /* Update tokenURI */
