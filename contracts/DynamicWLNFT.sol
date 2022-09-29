@@ -17,6 +17,8 @@ pragma solidity ^0.8.9;
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract DynamicNFT is ERC721A, Ownable{
     using SafeMath for uint256;
@@ -27,6 +29,9 @@ contract DynamicNFT is ERC721A, Ownable{
     uint256 public TOKEN_PRICE;
     uint256 public MAX_TOKENS;
     uint256 public MAX_MINTS;
+    mapping(address => uint256) public claimedAmount;
+    bytes32 immutable public merkleRoot;
+
 
     // Metadata
     string public _baseTokenURI;
@@ -40,7 +45,8 @@ contract DynamicNFT is ERC721A, Ownable{
         string memory baseURI,
         uint256 tokenPrice,
         uint256 maxTokens,
-        uint256 maxMints   
+        uint256 maxMints,
+        bytes32 _merkleRoot
     )
     ERC721A (name, symbol)
     {
@@ -48,6 +54,7 @@ contract DynamicNFT is ERC721A, Ownable{
         setTokenPrice(tokenPrice);
         setMaxTokens(maxTokens);
         setMaxMints(maxMints);
+        merkleRoot = _merkleRoot;
     }
 
     /* ERC721 Setters */
@@ -84,12 +91,24 @@ contract DynamicNFT is ERC721A, Ownable{
     
     /* Main Sale */
     function mintTokens(uint256 numberOfTokens) public payable {
-        require(numberOfTokens <= MAX_MINTS, "Can only mint max purchase of tokens at a time");
+        require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "No more claim");
         // totalSuply() is inherited from ERC721Enumerable.
         require(totalSupply().add(numberOfTokens) <= MAX_TOKENS, "Purchase would exceed max supply of Tokens");
         require(TOKEN_PRICE.mul(numberOfTokens) <= msg.value, "Ether value sent is not correct");
         // ERC721A's _mint(to, quantity)
         _mint(msg.sender, numberOfTokens);
+    }
+
+    /* Mint for WL */
+    function mintWLTokens(bytes32[] calldata merkleProof, uint256 numberOfTokens) public payable {
+        require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "No more claim");
+        claimedAmount[msg.sender] += numberOfTokens;
+        require(MerkleProof.verify(merkleProof, merkleRoot, toBytes32(msg.sender)), "Invalid MerkleProof");
+        _mint(msg.sender, numberOfTokens);
+    }
+
+    function toBytes32(address addr) pure internal returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
     }
 
     /* Update tokenURI */
