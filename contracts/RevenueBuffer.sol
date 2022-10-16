@@ -41,6 +41,7 @@ contract RevenueBuffer is AccessControl{
 
   // we have 2 role: admin and provider 
   bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
+  
   constructor() {
       _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
   }

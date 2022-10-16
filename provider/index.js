@@ -169,6 +169,7 @@ const getItemSoldEvents = async(nft_id) => {
   }
 }
 
+// TODO: fetch from the latest HolderPass onwers list
 const getItemHolderList = async(nft_id) => {
   const itemSoldRef = collection(db, "itemSoldEvent");
   // TODO: Limit(number) needs to be update to 7

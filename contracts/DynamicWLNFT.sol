@@ -2,13 +2,14 @@
 pragma solidity ^0.8.9;
 
 ////////////////////////////////////////////
-// ___  ________ _____ ___  ___  ___  ___  
-// |  \/  |_   _|_   _/ _ \ |  \/  | / _ \ 
-// | .  . | | |   | |/ /_\ \| .  . |/ /_\ \
-// | |\/| | | |   | ||  _  || |\/| ||  _  |
-// | |  | |_| |_  | || | | || |  | || | | |
-// \_|  |_/\___/  \_/\_| |_/\_|  |_/\_| |_/
-//
+//  ___    __ __  ____    ____  ___ ___  ____   __ 
+// |   \  |  |  ||    \  /    ||   |   ||    | /  ]
+// |    \ |  |  ||  _  ||  o  || _   _ | |  | /  / 
+// |  D  ||  ~  ||  |  ||     ||  \_/  | |  |/  /  
+// |     ||___, ||  |  ||  _  ||   |   | |  /   \_ 
+// |     ||     ||  |  ||  |  ||   |   | |  \     |
+// |_____||____/ |__|__||__|__||___|___||____\____|
+// 
 ////////////////////////////////////////////
 
 // MitamaTest is Dynamic ERC721
@@ -30,8 +31,6 @@ contract DynamicWLNFT is ERC721A, Ownable, MerkleWhitelist{
     uint256 public MAX_TOKENS;
     uint256 public MAX_MINTS;
     mapping(address => uint256) public claimedAmount;
-
-
 
     // Metadata
     string public _baseTokenURI;
@@ -108,10 +107,32 @@ contract DynamicWLNFT is ERC721A, Ownable, MerkleWhitelist{
         _safeMint(msg.sender, numberOfTokens);
     }
 
+    // TODO:
+    /* Mint for Special WL */
+    function mintSpecialWL(bytes32[] calldata merkleProof, uint256 numberOfTokens)
+        public
+        payable 
+        onlyPublicWhitelist(merkleProof) //TODO: add SpecialWL
+    {
+        require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "Total amount claimed exceeds max 5 NFTs!");
+        claimedAmount[msg.sender] += numberOfTokens;
+        _safeMint(msg.sender, numberOfTokens);
+    }
+
     /* Update tokenURI */
     function updateTokenLevel(uint256 tokenId, uint8 level) public onlyOwner {
         require(_exists(tokenId), "tokenId doesn't exist.");
         require(6 > level && level > tokenLevel[tokenId], "Invalid level");
         tokenLevel[tokenId] = level;
+    }
+
+    /* Withdraw by owner*/
+    function withdraw() public payable onlyOwner {
+        // TODO
+    }
+
+    /* Refund by owner */
+    function refund() public payable onlyOwner {
+        // TODO
     }
 }
