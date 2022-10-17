@@ -19,8 +19,9 @@ import { IERC1155 } from "@solidstate/contracts/interfaces/IERC1155.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import "@solidstate/contracts/token/ERC1155/SolidStateERC1155.sol";
 import { ERC1155MetadataStorage } from "@solidstate/contracts/token/ERC1155/metadata/ERC1155MetadataStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Pass is SolidStateERC1155, AccessControl {
+contract HolderPass is SolidStateERC1155, Ownable {
 
     // Token informations
     string public name;
@@ -45,7 +46,6 @@ contract Pass is SolidStateERC1155, AccessControl {
 
         ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
         l.baseURI = _contractURI;
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         name = _name;
         symbol = _symbol;
 
@@ -53,26 +53,20 @@ contract Pass is SolidStateERC1155, AccessControl {
 
     function mint(
         address account,
-        uint256 id,
-        uint256 amount
-    ) external onlyRole(MINTER_ROLE){
-        _mint(account, id, amount, '');
+        uint256 id
+    ) external onlyOwner{
+        _mint(account, id, 1, '');
     }
 
     function burn(
         address account,
-        uint256 id,
-        uint256 amount
-    ) external onlyRole(MINTER_ROLE) {
-        _burn(account, id, amount);
+        uint256 id
+    ) external onlyOwner {
+        _burn(account, id, 1);
     }
 
-    function setContractURI(string calldata _uri) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setContractURI(string calldata _uri) external onlyOwner {
         contractURI = _uri;
     }
 
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, AccessControl) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
 }
