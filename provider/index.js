@@ -200,6 +200,7 @@ const main = async (event) => {
   console.log("isPriceRaised", isPriceRaised);
   if(isPriceRaised) {
     await injectItem(item);
+    // TODO: holderAddressList from HolderPass
     const holderAddressList = await getItemHolderList(item.nft_id);
     console.log(holderAddressList);
     await updateRequest(tokenId, holderAddressList);

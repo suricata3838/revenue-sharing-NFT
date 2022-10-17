@@ -29,6 +29,7 @@ async function deployDynamicWLNFT() {
     const DynamicWLNFT = await hre.ethers.getContractFactory("DynamicWLNFT");
     const dynamicWLNFT = await DynamicWLNFT.deploy(
         name, symbol, baseURI, tokenPrice, maxTokens, maxMints);
+    console.log("dynamicWLNFT:", dynamicWLNFT);
     await dynamicWLNFT.deployed();
     console.log("Contract deployed to:", dynamicWLNFT.address, "from ", deployer.address);
 }
