@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 const name = "HolderPass"
 const symbol = "HPS"
-const uri = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/Pass_dir/token.json"
+const uri = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/pass_meta/{id}.json"
 
 async function deployHolderPass () {
     const [deployer] = await hre.ethers.getSigners();
