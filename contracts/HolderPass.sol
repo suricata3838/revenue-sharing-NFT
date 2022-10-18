@@ -17,6 +17,7 @@ pragma solidity ^0.8.9;
 import { ERC165, IERC165, ERC165Storage }  from "@solidstate/contracts/introspection/ERC165.sol";
 import { IERC1155 } from "@solidstate/contracts/interfaces/IERC1155.sol";
 import { AccessControl } from "@solidstate/contracts/access/access_control/AccessControl.sol";
+import { AccessControlStorage } from "@solidstate/contracts/access/access_control/AccessControlStorage.sol";
 import { EnumerableSet } from "@solidstate/contracts/utils/EnumerableSet.sol";
 import { ERC1155MetadataStorage } from "@solidstate/contracts/token/ERC1155/metadata/ERC1155MetadataStorage.sol";
 import { ERC1155EnumerableStorage } from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
@@ -31,7 +32,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
     // Token informations
     string public name;
     string public symbol;
-    uint256 public MAX_NUMBER = 3;
+    uint256 public MAX_TOKEN = 3;
     mapping(uint256 => address[]) public indexedAccounts;
     bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -56,31 +57,23 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
+    /**
+     * @notice mint new 1 token by tokenId, the amount is up to MAX_TOKEN.
+     * @param account: account to mint a token, uint256: tokenid
+     */
     function mintPass(
         address account,
         uint256 id
     ) external onlyRole(MINTER_ROLE)  {
-        if(totalSupply(id) >= MAX_NUMBER) {
+        if(totalSupply(id) >= MAX_TOKEN) {
             address secondPassHolder = indexedAccounts[id][1];
             _burn(secondPassHolder, id, 1); 
         }
         _mint(account, id, 1, '');
     }
 
-    function burn(
-        address account,
-        uint256 id
-    ) external onlyRole(MINTER_ROLE) {
-        _burn(account, id, 1);
-    }
-
-    function setBaseURI(string calldata _uri) external onlyRole(MINTER_ROLE) {
-        ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
-        l.baseURI = _uri;
-    }
-
     /**
-     * @notice query idx of account who owns token id
+     * @notice query idx of account_unit who owns token id
      * @param id: token id, addr: address
      * @return index of Account
      */
@@ -100,6 +93,11 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         return accounts.indexOf(addr);
     }
 
+    /**
+     * @notice query idx of indexed_accounts_list who owns token id
+     * @param id: token id, addr: address
+     * @return index of indexed_accounts_list
+     */
     function indexOfIndexedAccounts(uint256 id, address addr)
         external
         view
@@ -117,6 +115,11 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         return _accountByIndex(id, index);
     }
     
+    /**
+     * @notice get indexed_accounts_list who owns token id
+     * @param id: token id, index: index of indexed_accounts_list
+     * @return account
+     */
     function indexedAccount(uint256 id, uint256 index)
         external
         view
@@ -125,25 +128,6 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         address[] memory accounts = indexedAccounts[id];
         require(accounts.length > index, "Invalid index");
         return accounts[index];
-    }
-
-    /**
-     * @notice query idx of account who owns token id
-     * @param id: token id, addr: address
-     * @return index of Account
-     */
-    function _accountByIndex(uint256 id, uint256 index)
-        internal
-        view
-        returns (address)
-    {
-        EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
-            .layout()
-            .accountsByToken[id];
-
-        // value => index
-        require(accounts.length() > index, "Invalid index");
-        return accounts.at(index);
     }
 
     /**
@@ -190,9 +174,9 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         }
     }
 
-    /////
-    // Internal functions
-    /////
+    /**
+     *  Internal functions
+     */
     function _indexOf(address[] memory arr, address addr)
         internal
         pure
@@ -204,6 +188,37 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             }
         }
         revert("Index doesn't exist");
+    }
+    
+    /**
+     * @notice query idx of account who owns token id
+     * @param id: token id, addr: address
+     * @return index of Account
+     */
+    function _accountByIndex(uint256 id, uint256 index)
+        internal
+        view
+        returns (address)
+    {
+        EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
+            .layout()
+            .accountsByToken[id];
+
+        // value => index
+        require(accounts.length() > index, "Invalid index");
+        return accounts.at(index);
+    }
+
+    /**
+     * House keeping
+     */
+    function setBaseURI(string calldata _uri) external onlyRole(MINTER_ROLE) {
+        ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
+        l.baseURI = _uri;
+    }
+
+    function setMaxToken(uint256 n) external onlyRole(AccessControlStorage.DEFAULT_ADMIN_ROLE) {
+        MAX_TOKEN = n;
     }
 
 }
