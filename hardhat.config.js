@@ -1,7 +1,7 @@
 require ("@nomiclabs/hardhat-ethers");
 require ("@nomiclabs/hardhat-etherscan");
 require("dotenv").config();
-const { GOERLI_APIKEY, GOERLI_API, PRIVKEY } = process.env;
+const { GOERLI_APIKEY, ETHSCAN_APIKEY, GOERLI_API, PRIVKEY } = process.env;
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -17,7 +17,7 @@ module.exports = {
   solidity: "0.8.9",
   etherscan: {
     apiKey: {
-      goerli: GOERLI_APIKEY
+      goerli: ETHSCAN_APIKEY
     }
   }
 };
