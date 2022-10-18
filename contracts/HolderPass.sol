@@ -71,12 +71,38 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         }
         _mint(account, id, 1, '');
     }
-
+    
     /**
-     * @notice query idx of account_unit who owns token id
-     * @param id: token id, addr: address
-     * @return index of Account
+     * @notice get indexed_accounts_list who owns token id
+     * @param id: token id
+     * @return indexed_accounts_list
      */
+    function indexedAccountsByToken(uint256 id)
+        external
+        view
+        returns (address[] memory)   
+    {
+        address[] storage accounts = indexedAccounts[id];
+        return accounts;
+    }
+    
+    function accountByIndex(uint256 id, uint256 index)
+        external
+        view
+        returns (address)   
+    {
+        return _accountByIndex(id, index);
+    }
+
+    function indexOfIndexedAccounts(uint256 id, address addr)
+        external
+        view
+        returns (uint256)
+    {
+        address[] memory accounts = indexedAccounts[id];
+        return _indexOf(accounts, addr);
+    }
+
     function indexOfAddr(uint256 id, address addr)
         external
         view
@@ -91,43 +117,6 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         // value => index
         require(accounts.contains(addr), "Invalid Index");
         return accounts.indexOf(addr);
-    }
-
-    /**
-     * @notice query idx of indexed_accounts_list who owns token id
-     * @param id: token id, addr: address
-     * @return index of indexed_accounts_list
-     */
-    function indexOfIndexedAccounts(uint256 id, address addr)
-        external
-        view
-        returns (uint256)
-    {
-        address[] memory accounts = indexedAccounts[id];
-        return _indexOf(accounts, addr);
-    }
-
-    function accountByIndex(uint256 id, uint256 index)
-        external
-        view
-        returns (address)   
-    {
-        return _accountByIndex(id, index);
-    }
-    
-    /**
-     * @notice get indexed_accounts_list who owns token id
-     * @param id: token id, index: index of indexed_accounts_list
-     * @return account
-     */
-    function indexedAccount(uint256 id, uint256 index)
-        external
-        view
-        returns (address)   
-    {
-        address[] memory accounts = indexedAccounts[id];
-        require(accounts.length > index, "Invalid index");
-        return accounts[index];
     }
 
     /**
@@ -150,20 +139,19 @@ contract HolderPass is SolidStateERC1155, AccessControl {
 
                 // Assumption: Amount should be 1.
                 if (amount > 0) {
-                    uint256 id = ids[i];
+                    uint256 tokenId = ids[i];
 
                     if (from == address(0)) {
                         // Mint
-                        indexedAccounts[id].push(to);
+                        indexedAccounts[tokenId].push(to);
                     } else if (to == address(0)){
                         // Burn
-                        uint256 indexOfFrom = _indexOf(indexedAccounts[id], from);
-                        delete indexedAccounts[id][indexOfFrom];
-                        indexedAccounts[id].pop();
+                        uint256 indexOfFrom = _indexOf(indexedAccounts[tokenId], from);
+                        _removeAccounts(tokenId, indexOfFrom);
                     } else {
                         // all Transfer cases
-                        uint256 indexOfFrom = _indexOf(indexedAccounts[id], from);
-                        indexedAccounts[id][indexOfFrom] = to;
+                        uint256 indexOfFrom = _indexOf(indexedAccounts[tokenId], from);
+                        indexedAccounts[tokenId][indexOfFrom] = to;
                     }
                 }
 
@@ -188,6 +176,16 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             }
         }
         revert("Index doesn't exist");
+    }
+    
+    function _removeAccounts(uint256 id, uint256 index) internal {
+        address[] storage accounts = indexedAccounts[id];
+        if (index >= accounts.length) return;
+
+        for (uint i = index; i<accounts.length-1; i++){
+            accounts[i] = accounts[i+1];
+        }
+        accounts.pop();
     }
     
     /**

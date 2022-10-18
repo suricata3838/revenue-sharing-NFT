@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract RevenueBuffer is AccessControl{
+contract RevenueShareForDonation is AccessControl{
   using SafeMath for uint256;
   uint256 public receiveId;
   uint256 public requestId;
@@ -40,36 +40,48 @@ contract RevenueBuffer is AccessControl{
   struct Request {
       uint256 tokenId;
       uint256 amount;
-      address[] members;
-  }
-  mapping(uint256=>MemberAmount[]) public tokenIdToMemberAmounts;
-  struct MemberAmount {
-      address member;
-      uint256 amount;
+      address account;
   }
   uint256 numWithdrawer;
-
-  // we have 2 role: admin and provider 
   bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
+
+  mapping(uint256 => uint256) internal tokenToMaterial;
+  mapping(uint256 => address) internal materialToDonation;
+
   
   constructor() {
       _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+      _grantRole(WITHDRAWER_ROLE, msg.sender);
   }
 
   event ReceivedETH(uint256 receivedId, uint256 amount);
   event ReceivedWETH(uint256 receivedId, uint256 amount);
-  event RequestAdded(uint tokenId, uint256 amount, address[] m);
+  event RequestAdded(uint tokenId, uint256 amount, address account);
   event WithdrawedETH(address indexed account, uint256 indexed amount);
   event WithdrawedWETH(address indexed account, uint256 indexed amount);
   event WithdrawerAdded(address withdrawer);
   event WithdrawerRemoved(address withdrawer);
 
-  function setTokenAddress(address token_) external onlyRole(DEFAULT_ADMIN_ROLE) {
-      require(token_ != address(0), "Invalid token address");
-      WETH = token_;
+  function setWET(address _addr) external onlyRole(DEFAULT_ADMIN_ROLE) {
+      require(_addr != address(0), "Invalid token address");
+      WETH = _addr;
   }
 
-  function addRequest(uint tokenId, address[] memory m) external onlyRole(DEFAULT_ADMIN_ROLE) {
+  function setTokenToMaterial(uint256[] memory materialList) external onlyRole(DEFAULT_ADMIN_ROLE){
+    require(materialList.length == 10000, "Invalid materialList");
+    for(uint256 i; i < materialList.length; i++){
+      tokenToMaterial[i] = materialList[i];
+    }
+  }
+  
+  function setMaterialToDonation(address[] memory addresses) external onlyRole(DEFAULT_ADMIN_ROLE){
+    require(addresses.length == 7, "Invalid materialList");
+    for(uint256 i; i < addresses.length; i++){
+      materialToDonation[i] = addresses[i];
+    }
+  }
+
+  function addRequest(uint tokenId) external onlyRole(DEFAULT_ADMIN_ROLE) {
     updateReceivedWETH();
     require(requestId == receiveId -1, "Invalid requestId");
     ++requestId;
@@ -77,20 +89,16 @@ contract RevenueBuffer is AccessControl{
     bool isWETH = receiveIdToPayments[requestId].isWETH;
     require(amount > 0, "request amount should be > 0");
     //amount is given by receivedIdToPayments
-    Request memory request =  Request(tokenId, amount, m);
+    uint256 materialId = tokenToMaterial[tokenId];
+    address donation = materialToDonation[materialId];
+    Request memory request =  Request(tokenId, amount, donation);
     requestIdToRequest[requestId] = request;
-    (bool res, uint256 revenuePerMember) = amount.tryDiv(m.length);
-    require(res, "Failed to devide receive amount");
-    for(uint i=0; i<m.length; i++) {
-      if (isWETH) {
-        claimablePerAddress[m[i]].amountWETH += revenuePerMember;
-      } else {
-        claimablePerAddress[m[i]].amountETH += revenuePerMember;
-      }
-      MemberAmount memory ma = MemberAmount(m[i], revenuePerMember);
-      tokenIdToMemberAmounts[tokenId].push(ma);
+    if (isWETH) {
+        claimablePerAddress[donation].amountWETH += amount;
+    } else {
+        claimablePerAddress[donation].amountETH += amount;
     }
-    emit RequestAdded(tokenId, amount, m);
+    emit RequestAdded(tokenId, amount, donation);
   }
 
   //receive ETH
@@ -103,7 +111,7 @@ contract RevenueBuffer is AccessControl{
 
   // update receivedWETH
   function updateReceivedWETH() internal {
-    require(WETH != address(0), "failed setTokenAddress");
+    require(WETH != address(0), "failed setWET()");
     uint256 bal = IERC20(WETH).balanceOf(address(this));
     if(bal > WETHbalance) {
       ++receiveId;
@@ -119,26 +127,23 @@ contract RevenueBuffer is AccessControl{
     // transfer claimablePerAddress to all addresses if the amount is not zero.
     // to get the wallet list: requestIdToRequest[requestId(itterable)].members
     for(uint i=withdrawnId; i<=requestId; i++) {
-      address[] memory m = requestIdToRequest[i].members;
-      for (uint j=0; j<m.length; j++) {
-        address account = m[j];
+      address account = requestIdToRequest[i].account;
         if(claimablePerAddress[account].amountETH > 0){
-          uint256 claimableETH = claimablePerAddress[account].amountETH;
-          withdrawnPerAddress[account].amountETH += claimableETH;
-          claimablePerAddress[account].amountETH = 0;
-          totalReceivedETH -= claimableETH;
-          _transfer(account, claimableETH);
-          emit WithdrawedETH(account, claimableETH);
+            uint256 claimableETH = claimablePerAddress[account].amountETH;
+            withdrawnPerAddress[account].amountETH += claimableETH;
+            claimablePerAddress[account].amountETH = 0;
+            totalReceivedETH -= claimableETH;
+            _transfer(account, claimableETH);
+            emit WithdrawedETH(account, claimableETH);
         }
         if(claimablePerAddress[account].amountWETH > 0){
-          uint256 claimableWETH = claimablePerAddress[account].amountWETH;
-          withdrawnPerAddress[account].amountWETH += claimableWETH;
-          claimablePerAddress[account].amountWETH = 0;
-          totalReceivedWETH -= claimableWETH;
-          IERC20(WETH).transfer(account, claimableWETH);
-          emit WithdrawedWETH(account, claimableWETH);
+            uint256 claimableWETH = claimablePerAddress[account].amountWETH;
+            withdrawnPerAddress[account].amountWETH += claimableWETH;
+            claimablePerAddress[account].amountWETH = 0;
+            totalReceivedWETH -= claimableWETH;
+            IERC20(WETH).transfer(account, claimableWETH);
+            emit WithdrawedWETH(account, claimableWETH);
         }
-      }
     }
     withdrawnId = requestId;
   }
