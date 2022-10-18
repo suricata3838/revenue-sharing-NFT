@@ -31,14 +31,14 @@ contract HolderPass is SolidStateERC1155, AccessControl {
     // Token informations
     string public name;
     string public symbol;
-    string public contractURI;
     uint256 public MAX_NUMBER = 3;
+    mapping(uint256 => address[]) public indexedAccounts;
     bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     constructor(
         string memory _name,
         string memory _symbol,
-        string memory _contractURI
+        string memory _bsaeURI
     ) {
         ERC165Storage.layout().setSupportedInterface(
             type(IERC165).interfaceId,
@@ -50,7 +50,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         );
 
         ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
-        l.baseURI = _contractURI;
+        l.baseURI = _bsaeURI;
         name = _name;
         symbol = _symbol;
         _grantRole(MINTER_ROLE, msg.sender);
@@ -60,7 +60,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         address account,
         uint256 id
     ) external onlyRole(MINTER_ROLE)  {
-        if(totalSupply(id) > MAX_NUMBER) {
+        if(totalSupply(id) >= MAX_NUMBER) {
             address secondPassHolder = _addrByIndex(id, 1);
             _burn(secondPassHolder, id, 1); 
         }
@@ -74,8 +74,9 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         _burn(account, id, 1);
     }
 
-    function setContractURI(string calldata _uri) external onlyRole(MINTER_ROLE) {
-        contractURI = _uri;
+    function setBaseURI(string calldata _uri) external onlyRole(MINTER_ROLE) {
+        ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
+        l.baseURI = _uri;
     }
 
     /**
@@ -99,12 +100,31 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         return accounts.indexOf(addr);
     }
 
+    function indexOfIndexedAccounts(uint256 id, address addr)
+        external
+        view
+        returns (uint256)
+    {
+        address[] memory accounts = indexedAccounts[id];
+        return _indexOf(accounts, addr);
+    }
+
     function addrByIndex(uint256 id, uint256 index)
         external
         view
         returns (address)   
     {
         return _addrByIndex(id, index);
+    }
+    
+    function indexedAccountByIndex(uint256 id, uint256 index)
+        external
+        view
+        returns (address)   
+    {
+        address[] memory accounts = indexedAccounts[id];
+        require(accounts.length > index, "Invalid index");
+        return accounts[index];
     }
 
     /**
@@ -126,6 +146,63 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         return accounts.at(index);
     }
 
+    /**
+     * @notice ERC1155 hook: update aggregate values
+     * @inheritdoc ERC1155BaseInternal
+     */
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) internal virtual override {
+        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
+        if (from != to) {
+            for (uint256 i; i < ids.length; ) {
+                uint256 amount = amounts[i];
+
+                // Assumption: Amount should be 1.
+                if (amount > 0) {
+                    uint256 id = ids[i];
+
+                    if (from == address(0)) {
+                        // Mint
+                        indexedAccounts[id].push(to);
+                    } else if (to == address(0)){
+                        // Burn
+                        uint256 indexOfFrom = _indexOf(indexedAccounts[id], from);
+                        delete indexedAccounts[id][indexOfFrom];
+                    } else {
+                        // all Transfer cases
+                        uint256 indexOfFrom = _indexOf(indexedAccounts[id], from);
+                        indexedAccounts[id][indexOfFrom] = to;
+                    }
+                }
+
+                unchecked {
+                    i++;
+                }
+            }
+        }
+    }
+
+    /////
+    // Internal functions
+    /////
+    function _indexOf(address[] memory arr, address addr)
+        internal
+        pure
+        returns (uint256)
+    {
+        for (uint256 i = 0; i < arr.length; i++) {
+            if (arr[i] == addr) {
+                return i;
+            }
+        }
+        revert("Index doesn't exist");
+    }
 
 }
