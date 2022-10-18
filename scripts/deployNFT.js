@@ -15,6 +15,10 @@ const arguments = [
     maxTokens,
     maxMints
 ]
+module.exports = {
+    arguments
+}
+
 // async function deployDynamicNFT() {
 //     const [deployer] = await hre.ethers.getSigners();
 //     const DynamicNFT = await hre.ethers.getContractFactory("DynamicNFT");
@@ -29,7 +33,7 @@ async function deployDynamicWLNFT() {
     const DynamicWLNFT = await hre.ethers.getContractFactory("DynamicWLNFT");
     const dynamicWLNFT = await DynamicWLNFT.deploy(
         name, symbol, baseURI, tokenPrice, maxTokens, maxMints);
-    console.log("dynamicWLNFT:", dynamicWLNFT);
+    console.log("dynamicWLNFT:", dynamicWLNFT.deployTransaction.hash);
     await dynamicWLNFT.deployed();
     console.log("Contract deployed to:", dynamicWLNFT.address, "from ", deployer.address);
 }
@@ -68,9 +72,4 @@ const main = async () => {
 main().catch((error) => {
     console.error(error);
     process.exitCode = 1;
-  });
-
-
-module.exports = {
-    arguments
-}
+});

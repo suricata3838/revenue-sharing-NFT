@@ -61,7 +61,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         uint256 id
     ) external onlyRole(MINTER_ROLE)  {
         if(totalSupply(id) >= MAX_NUMBER) {
-            address secondPassHolder = _addrByIndex(id, 1);
+            address secondPassHolder = indexedAccounts[id][1];
             _burn(secondPassHolder, id, 1); 
         }
         _mint(account, id, 1, '');
@@ -109,15 +109,15 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         return _indexOf(accounts, addr);
     }
 
-    function addrByIndex(uint256 id, uint256 index)
+    function accountByIndex(uint256 id, uint256 index)
         external
         view
         returns (address)   
     {
-        return _addrByIndex(id, index);
+        return _accountByIndex(id, index);
     }
     
-    function indexedAccountByIndex(uint256 id, uint256 index)
+    function indexedAccount(uint256 id, uint256 index)
         external
         view
         returns (address)   
@@ -132,7 +132,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
      * @param id: token id, addr: address
      * @return index of Account
      */
-    function _addrByIndex(uint256 id, uint256 index)
+    function _accountByIndex(uint256 id, uint256 index)
         internal
         view
         returns (address)
@@ -175,6 +175,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
                         // Burn
                         uint256 indexOfFrom = _indexOf(indexedAccounts[id], from);
                         delete indexedAccounts[id][indexOfFrom];
+                        indexedAccounts[id].pop();
                     } else {
                         // all Transfer cases
                         uint256 indexOfFrom = _indexOf(indexedAccounts[id], from);

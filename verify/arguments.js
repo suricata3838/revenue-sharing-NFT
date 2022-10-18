@@ -1,7 +1,9 @@
-const {arguments} = require('../scripts/deployNFT')
+// const {arguments: argsNFT} = require('../scripts/deployNFT')
+const {arguments: argsPass} = require('../scripts/deployHolderPass')
 
 module.exports = [
-    arguments
+    //...argsNFT,
+    ...argsPass
 ]
 
 /* How to deploy and verify */
