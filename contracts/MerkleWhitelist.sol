@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MerkleWhitelist is Ownable {
-  bytes32 public publicWhitelistMerkleRoot;
-  // bytes32 public mouseWhitelistMerkleRoot;
+  bytes32 public NormalWhitelistMerkleRoot;
+  // bytes32 Normal mouseWhitelistMerkleRoot;
 
   string public whitelistURI;
 
@@ -15,13 +15,13 @@ contract MerkleWhitelist is Ownable {
   */
 
   //Frontend verify functions
-  function verifyPublicSender(address userAddress, bytes32[] memory proof) public view returns (bool) {
-    return _verify(proof, toBytes32(userAddress), publicWhitelistMerkleRoot);
+  function verifyNormalSender(address userAddress, bytes32[] memory proof) public view returns (bool) {
+    return _verify(proof, toBytes32(userAddress), NormalWhitelistMerkleRoot);
   }
 
   //Internal verify functions
-  function _verifyPublicSender(bytes32[] memory proof) internal view returns (bool) {
-    return _verify(proof, toBytes32(msg.sender), publicWhitelistMerkleRoot);
+  function _verifyNormalSender(bytes32[] memory proof) internal view returns (bool) {
+    return _verify(proof, toBytes32(msg.sender), NormalWhitelistMerkleRoot);
   }
 
   function _verify(bytes32[] memory proof, bytes32 addressHash, bytes32 whitelistMerkleRoot)
@@ -44,15 +44,15 @@ contract MerkleWhitelist is Ownable {
   OWNER FUNCTIONS
   */
 
-  function setPublicWhitelistMerkleRoot(bytes32 merkleRoot) external onlyOwner {
-    publicWhitelistMerkleRoot = merkleRoot;
+  function setNormalWhitelistMerkleRoot(bytes32 merkleRoot) external onlyOwner {
+    NormalWhitelistMerkleRoot = merkleRoot;
   }
 
   /*
   MODIFIER
   */
-  modifier onlyPublicWhitelist(bytes32[] memory proof) {
-    require(_verifyPublicSender(proof), "MerkleWhitelist: Caller is not whitelisted");
+  modifier onlyNormalWhitelist(bytes32[] memory proof) {
+    require(_verifyNormalSender(proof), "MerkleWhitelist: Caller is not whitelisted");
     _;
   }
 }
