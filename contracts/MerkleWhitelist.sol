@@ -17,30 +17,30 @@ contract MerkleWhitelist is Ownable {
 
   //Frontend verify functions
   function verifyNormalSender(address userAddress, bytes32[] memory proof) public view returns (bool) {
-    return _verify(proof, toBytes32(userAddress), normalWhitelistMerkleRoot);
+    return _verify(proof, _hash(userAddress), normalWhitelistMerkleRoot);
   }
 
   function verifySpecialSender(address userAddress, bytes32[] memory proof) public view returns (bool) {
-    return _verify(proof, toBytes32(userAddress), specialWhitelistMerkleRoot);
+    return _verify(proof, _hash(userAddress), specialWhitelistMerkleRoot);
   }
 
   function verifyFreeMintSender(address userAddress, bytes32[] memory proof) public view returns (bool) {
-    return _verify(proof, toBytes32(userAddress), freeMintWhitelistMerkleRoot);
+    return _verify(proof, _hash(userAddress), freeMintWhitelistMerkleRoot);
   }
 
   //Internal verify functions
   function _verifyNormalSender(bytes32[] memory proof) internal view returns (bool) {
-    return _verify(proof, toBytes32(msg.sender), normalWhitelistMerkleRoot);
+    return _verify(proof, _hash(msg.sender), normalWhitelistMerkleRoot);
   }
 
   function _verifySpecialSender(bytes32[] memory proof) internal view returns (bool) {
-    return _verify(proof, toBytes32(msg.sender), specialWhitelistMerkleRoot);
+    return _verify(proof, _hash(msg.sender), specialWhitelistMerkleRoot);
   }
 
   function _verifyFreeMintSender(bytes32[] memory proof) internal view returns (bool) {
-    return _verify(proof, toBytes32(msg.sender), freeMintWhitelistMerkleRoot);
+    return _verify(proof, _hash(msg.sender), freeMintWhitelistMerkleRoot);
   }
-  
+
   function _verify(bytes32[] memory proof, bytes32 addressHash, bytes32 whitelistMerkleRoot)
     internal
     pure
@@ -51,10 +51,6 @@ contract MerkleWhitelist is Ownable {
 
   function _hash(address _address) internal pure returns (bytes32) {
     return keccak256(abi.encodePacked(_address));
-  }
-
-  function toBytes32(address addr) pure internal returns (bytes32) {
-        return bytes32(uint256(uint160(addr)));
   }
 
   /*

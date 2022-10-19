@@ -129,7 +129,7 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     }
 
     function mintDAPublic (uint8 quantity) public payable {
-        bool res = canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, userToTokenBatchPrices);
+        bool res = canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_NORMAL_WL, userToTokenBatchPrices);
         if(!res) console.log("Invalid mint request");
         //Mint the quantity
         _safeMint(msg.sender, quantity);
@@ -141,7 +141,7 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
         onlyNormalWhitelist(merkleProof)
     {
         require(
-            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, normalWLToTokenBatchPrices),
+            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_SPECIAL_WL, normalWLToTokenBatchPrices),
             "Invalid mint request"
         );
         NORMAL_WL_MINTED += quantity;
@@ -315,7 +315,7 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
 
         //Require max is up to MAX_MINTS_PUBLIC
         require(
-            quantity > 0 && quantity + _sumOfQuantityMinted(_userToTokenBatchPrices, user) < _MAX_MINT,
+            quantity > 0 && quantity + _sumOfQuantityMinted(_userToTokenBatchPrices, user) <= _MAX_MINT,
             "Quantity exceeds max mintable!"
         );
 
@@ -350,12 +350,11 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
         mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices,
         address userAddr
     ) internal view returns (uint256) {
-        uint256 sumOfQuantityMinted;
         TokenBatchPrice[] memory batchPriceList = _userToTokenBatchPrices[userAddr];
-        console.log("length:", batchPriceList.length);
+        uint256 sumOfQuantityMinted;
         if(batchPriceList.length == 0) return 0;
         for(uint256 i=0; i < batchPriceList.length; i++){
-            sumOfQuantityMinted += batchPriceList[i-1].quantityMinted;
+            sumOfQuantityMinted += batchPriceList[i].quantityMinted;
         }
         return sumOfQuantityMinted;
     }
