@@ -154,7 +154,7 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     function mintSpecialWL(bytes32[] calldata merkleProof, uint8 quantity)
         public
         payable 
-        onlyNormalWhitelist(merkleProof) //TODO
+        onlySpecialWhitelist(merkleProof) //TODO
     {
         require(
             canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, specialWLToTokenBatchPrices),
@@ -167,7 +167,7 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
 
     function freeMint(bytes32[] memory proof)
         public
-        onlyNormalWhitelist(proof) //TODO
+        onlyFreeMintWhitelist(proof) //TODO
     {
         require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
         require(
