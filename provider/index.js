@@ -7,36 +7,57 @@ const { ethers, utils }  = require ("ethers");
 const dotenv  = require ("dotenv");
 dotenv.config();
 // const { ethers }  = require "hardhat";
+const {PRIVKEY, GOERLI_API} = process.env;
 const firebaseConfig = require("../firebase-config.json");
-const abi  =  require ("../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.json");
 
+const _network = "goerli";
+const RevenueBufferAbi  =  require ("../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.json");
+const RevenueBufferAddress = '0xf4102568FeBBbca13C8814501f598080e32A503E';
+const HolderPassAbi = require ("../artifacts/contracts/HolderPass.sol/HolderPass.json");
+const HolderPassAddress = "0x9EE05d60d3FAf8735e9fd9CC68E3f9F25537Cd84";
 
-const updateRequest = async (tokenId, members) => {
-  // get deployer(Admin) address of revenuBuffer contract
-  const deployer = process.env.DEPLOYER;
-  // deployed RevenueBuffer contract address on Rinkeby
-  const address = '0xf4102568FeBBbca13C8814501f598080e32A503E';
-  // Provider
-  const network = ethers.providers.getNetwork("rinkeby");
-  const alchemyProvider = new ethers.providers.AlchemyProvider(network, process.env.APIKEY);
-  // Signer(deployer address derived from PRIVKEY)
-  const signer = new ethers.Wallet(process.env.PRIVKEY, alchemyProvider);
-  // get contract instancess
-  const RevenueBuffer = await new ethers.Contract(address, abi.abi, signer);
-  const revenueBuffer = await RevenueBuffer.attach(address);
+const tokenLevelList = [0, 0.01, 0.5, 1.0, 3.0, 5.0]; //ETH for LevelUp of DynamicNFT
+
+const signer = () => {
+  const network = ethers.providers.getNetwork(_network);
+  const alchemyProvider = new ethers.providers.AlchemyProvider(network, GOERLI_API);
+  const signer = new ethers.Wallet(PRIVKEY, alchemyProvider);
+  return signer;
+}
+
+const getContract = (_signer, address, abi) => {
+  const Contract = new ethers.Contract(address, abi.abi, _signer);
+  const contractInst = Contract.attach(address);
+  return contractInst;
+}
+
+const updateRequest = async (tokenId, holderList) => {
+  const revenueBuffer = getContract(signer(), RevenueBufferAddress, RevenueBufferAbi);
+
   // Confirm: setTokenAddress() is ready.
   const address_WETH = await revenueBuffer.WETH();
   console.log("address_WETH:", address_WETH);
   if(address_WETH == "0x00") return;
 
   try {
-    // Write contract
-    const tx = await revenueBuffer.addRequest(tokenId, members);
+    // write
+    const tx = await revenueBuffer.addRequest(tokenId, holderList);
     console.log("update tx-hash:", tx.hash);
     await tx.wait();
-    // Read contract
+    // read
     const receiveId = ethers.utils.formatEther(await revenueBuffer.receiveId());
     console.log("current receiveId:", receiveId);
+  }catch(e){
+    console.error(e);
+  }
+}
+
+const fetchHolderList = async(tokenId) => {
+  const holderPass = getContract(signer(), HolderPassAddress, HolderPassAbi);
+  try {
+    // const holderList = await holderPass.indexedAccountsByToken(tokenId)
+    const holderList = await holderPass.accountsByToken(tokenId);
+    return holderList;
   }catch(e){
     console.error(e);
   }
@@ -55,7 +76,6 @@ const client = new OpenSeaStreamClient({
     }
   });
 
-const tokenLevelList = [0, 0.01, 0.5, 1.0, 3.0, 5.0]; //ETH for LevelUp of DynamicNFT
 const getTokenLevel = (price) => {
   var level;
   var tokenLEvelPrice;
@@ -77,7 +97,7 @@ const sampleEvent = {
         "item": {
           "nft_id":"ethereum/0x8a90cab2b38dba80c64b7734e58ee1db38b8992e/222",
           "permalink":"https://opensea.io/assets/0x8a90cab2b38dba80c64b7734e58ee1db38b8992e/222",
-          "chain": { "name": "Rinkeby" },
+          "chain": { "name": "Goerli" },
           "metadata": {
               "name": "Mitama test #1",
               "description": "A community-driven collectibles project featuring art by Burnt Toast. Doodles come...",
@@ -86,7 +106,7 @@ const sampleEvent = {
               "metadata_url": "https://opensea.mypinata.cloud/ipfs/QmPMc4tcBsMqLRuCQtPmPe84bpSjrC3Ky7t3JWuHXYB4aS/222",
           },
         },
-        "maker": { "address": "0x9e7b8c91eca1139c41eead94eeb8bc21bd2725ab" },
+        "maker": { "address": "0xcDe7a88a1dada60CD5c888386Cc5C258D85941Dd" },
         "payment_token": {
           "address": "0x7ceb23fd6bc0add59e62ac25578270cff1b9f619",
           "decimals": 18,
@@ -97,7 +117,7 @@ const sampleEvent = {
         },
         "quantity": 1,
         "sale_price": 100000000000000000,
-        "taker": { "address": "0x338571a641d8c43f9e5a306300c5d89e0cb2cfaf" },
+        "taker": { "address": "0x39f3b9C8585Fc57A57EC39322E92Face43484D97" },
         "transaction": {
           "hash": "0x57135fca40b927fbd741f5a21626c1c4c84e7c1036bb50d3158e2fa62a80c941",
           "timestamp": "2022-04-21T18:26:36.000000+00:00"
@@ -169,11 +189,10 @@ const getItemSoldEvents = async(nft_id) => {
   }
 }
 
-// TODO: fetch from the latest HolderPass onwers list
-const getItemHolderList = async(nft_id) => {
+const getHolderList = async(tokenId) => {
   const itemSoldRef = collection(db, "itemSoldEvent");
   // TODO: Limit(number) needs to be update to 7
-  const q = query(itemSoldRef, where("nft_id", "==", nft_id), orderBy("sale_price", "desc"), limit(7));
+  const q = query(itemSoldRef, where("nft_id", "==", tokenId), orderBy("sale_price", "desc"), limit(7));
   try {
     const querySnapshot = await getDocs(q);
     var holderAddressList= [];
@@ -182,32 +201,52 @@ const getItemHolderList = async(nft_id) => {
     });
     return holderAddressList;
   } catch (e) {
-    console.error("Error getItemHolderList:", e);
+    console.error("Error getHolderList:", e);
   }
 }
 
-// run onItemosld
+const mintPass = async(tokenId, accountTo) => {
+  const holderPass = getContract(signer(), HolderPassAddress, HolderPassAbi);
+  try {
+    // const holderList = await holderPass.indexedAccountsByToken(tokenId)
+    const tx = await holderPass.mintPass(accountTo, tokenId);
+    console.log("update tx-hash:", tx.hash);
+    await tx.wait();
+  }catch(e){
+    console.error(e);
+  }
+}
+
+// Buyer nees to pay for 1.1x price.
+const isPriceRaised = (current, last) => current >= 1.1 * last;
+const isLevelRaised =(current, last) => getTokenLevel(current) > getTokenLevel(last);
+
+// run onItemsold
 const main = async (event) => {
-  const item = parseItemSoldEvent(event);
-  const tokenId = item.nft_id;
-  const currentPrice = item.sale_price;
-  const makerAddress = item.maker_address;
+  const {
+    nft_id: tokenId,
+    sale_price: currentPrice,
+    maker_address: makerAddress
+  } = parseItemSoldEvent(event);
   console.log("currentPrice:", currentPrice);
-  const priceLastSold = await getItemPriceLastSold(item.nft_id);
-  const isPriceRaised = currentPrice >= 1.1 * priceLastSold; // Buyer nees to pay for 1.1x price. 
-  console.log("level:", getTokenLevel(currentPrice), "<=", getTokenLevel(priceLastSold));
-  const isLevelRaised = getTokenLevel(currentPrice) > getTokenLevel(priceLastSold);
-  console.log("isPriceRaised", isPriceRaised);
-  if(isPriceRaised) {
+  const priceLastSold = await getItemPriceLastSold(tokenId);
+
+  if(isPriceRaised(currentPrice, priceLastSold)) {
     await injectItem(item);
-    // TODO: holderAddressList from HolderPass
-    const holderAddressList = await getItemHolderList(item.nft_id);
-    console.log(holderAddressList);
-    await updateRequest(tokenId, holderAddressList);
-    // call mint of holderPassNFT
+    // when do we issue the Holder Pass??
+    await mintPass(tokenId, makerAddress);
+    const holderList = (await fetchHolderList(tokenId)).length !=0
+    ? await fetchHolderList(tokenId)
+    : await getHolderList(tokenId);
+    console.log(holderList);
+    await updateRequest(tokenId, holderList);
+    // TODO: Call mint of holderPassNFT
     console.log("isLevelRaised", isLevelRaised);
+    // when do we issue the Holder Pass??
+    // await mintPass(tokenId, makerAddress);
   };
-  if(isLevelRaised) {
+
+  if(isLevelRaised(currentPrice, priceLastSold)) {
     console.log("token level up!");
     const level = getTokenLevel(currentPrice);
     // call updateTokenLevel(uint256 tikenId, uint8 level) of MitamaNFT
@@ -215,7 +254,8 @@ const main = async (event) => {
 }
 
 // await injectItem(parseItemSoldEvent(sampleEvent));
-// await main(sampleEvent);
+await main(sampleEvent);
 
-// client.onItemSold('henohenomoheji', (e) => main(e));
 client.onItemSold('mitama-test-1', (e) => main(e));
+
+// if the websocket client is disconnected, automatically try to recoonect it.

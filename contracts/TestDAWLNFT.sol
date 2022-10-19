@@ -183,6 +183,19 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
         //Mint them
         _safeMint(msg.sender, 1);
     }
+    
+    function teamMint(uint256 quantity, address receiver) public onlyOwner {
+        //Max supply
+        require(
+            totalSupply() + quantity <= TOKEN_QUANTITY,
+            "Max supply of 10,000 total!"
+        );
+
+        require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
+
+        //Mint the quantity
+        _safeMint(receiver, quantity);
+    }
 
     /**
      * Refund and Withdraw

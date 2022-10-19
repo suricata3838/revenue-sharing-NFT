@@ -19,7 +19,7 @@ import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "./MerkleWhitelist.sol";
+import "../MerkleWhitelist.sol";
 
 contract DynamicWLNFT is ERC721A, Ownable, MerkleWhitelist{
     using SafeMath for uint256;
@@ -100,7 +100,7 @@ contract DynamicWLNFT is ERC721A, Ownable, MerkleWhitelist{
     function mintPublicWL(bytes32[] calldata merkleProof, uint256 numberOfTokens)
         public
         payable 
-        onlyPublicWhitelist(merkleProof)
+        onlyNormalWhitelist(merkleProof)
     {
         require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "Total amount claimed exceeds max 5 NFTs!");
         claimedAmount[msg.sender] += numberOfTokens;
@@ -112,7 +112,7 @@ contract DynamicWLNFT is ERC721A, Ownable, MerkleWhitelist{
     function mintSpecialWL(bytes32[] calldata merkleProof, uint256 numberOfTokens)
         public
         payable 
-        onlyPublicWhitelist(merkleProof) //TODO: add SpecialWL
+        onlyNormalWhitelist(merkleProof) //TODO: add SpecialWL
     {
         require(claimedAmount[msg.sender] + numberOfTokens <= MAX_MINTS, "Total amount claimed exceeds max 5 NFTs!");
         claimedAmount[msg.sender] += numberOfTokens;
