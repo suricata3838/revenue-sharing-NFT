@@ -15,6 +15,9 @@ module.exports = {
     }
   },
   solidity: "0.8.9",
+  paths: {
+    sources: './contracts/active'
+  },
   etherscan: {
     apiKey: {
       goerli: ETHSCAN_APIKEY

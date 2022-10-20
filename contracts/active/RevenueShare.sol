@@ -10,12 +10,12 @@ pragma solidity ^0.8.9;
 // \_| \_\___| \_/ \___|_| |_|\__,_|\___| \____/|_| |_|\__,_|_|  \___|
 //                                                                                                                               
 /////////////////////////////////////////
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract RevenueShare is AccessControlUpgradeable {
-  using SafeMathUpgradeable for uint256;
+contract RevenueShare is AccessControl{
+  using SafeMath for uint256;
   uint256 public receiveId;
   uint256 public requestId;
   uint256 public withdrawnId;
@@ -51,9 +51,8 @@ contract RevenueShare is AccessControlUpgradeable {
 
   // we have 2 role: admin and provider 
   bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
-
-  function __RevenueShare_init() public initializer {
-      __AccessControl_init();
+  
+  constructor() {
       _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
   }
 
