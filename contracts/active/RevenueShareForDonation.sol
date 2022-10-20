@@ -13,7 +13,6 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
 
 contract RevenueShareForDonation is AccessControl{
   using SafeMath for uint256;
@@ -96,7 +95,6 @@ contract RevenueShareForDonation is AccessControl{
   receive() external payable {
     _updateReceivedWETH();
     ++receiveId;
-    console.log("receiveId:", receiveId);
     receiveIdToPayments[receiveId] = Payment(msg.value, false);
     totalReceivedETH += msg.value;
     emit ReceivedETH(receiveId, msg.value);
@@ -106,13 +104,10 @@ contract RevenueShareForDonation is AccessControl{
   function _updateReceivedWETH() internal {
     require(WETH != address(0), "failed setWET()");
     uint256 bal = IERC20(WETH).balanceOf(address(this));
-    console.log("bal:", bal);
-    console.log("WETHbal:", WETHbal);
     if(bal == 0){
       WETHbal == 0;
     } else if(bal > 0 && bal > WETHbal) {   
       uint256 diff = bal - WETHbal;
-      console.log("diff:", diff);
       ++receiveId;
       receiveIdToPayments[receiveId] = Payment(diff, true);
       totalReceivedWETH += diff;
