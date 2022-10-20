@@ -29,16 +29,16 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     /**
      * Mitama Dutch Auction configration: configured by the team at deployment.
      */
-    uint256 public DA_STARTING_PRICE = 0.6 ether;
-    uint256 public DA_ENDING_PRICE = 0.1 ether;
+    uint256 public DA_STARTING_PRICE = 0.006 ether;
+    uint256 public DA_ENDING_PRICE = 0.001 ether;
     // Decrement 0.05 ether every 3 hours ~= 0.00005 ether every 10 sec.
-    uint256 public DA_DECREMENT = 0.00005 ether;
-    uint256 public DA_DECREMENT_FREQUENCY = 10;
+    uint256 public DA_DECREMENT = 0.00001 ether;
+    uint256 public DA_DECREMENT_FREQUENCY = 1;
     // Mint starts: Sunday, October 30, 2022 9:00:00 PM GMT+09:00: 1667131200
     uint256 public DA_STARTING_TIMESTAMP = 1667131200;
     uint256 public DA_QUANTITY = 3;
     // wait 1 week: 
-    uint256 public WAITING_FINAL_WITHDRAW = 60*60*24*7;
+    uint256 public WAITING_FINAL_WITHDRAW = 60*5;
     // Withdraw address
     address public TEAM_WALLET = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
 
@@ -201,7 +201,7 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
      * Refund and Withdraw
      */
 
-    function withdrawInitialFunds() public payable onlyOwner {
+    function withdrawInitialFunds() public onlyOwner {
         require(
             !INITIAL_FUNDS_WITHDRAWN,
             "Initial funds have already been withdrawn."

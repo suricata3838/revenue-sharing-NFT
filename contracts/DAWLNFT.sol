@@ -19,24 +19,45 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./MerkleWhitelist.sol";
+import "hardhat/console.sol";
 
-contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
+contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     using SafeMath for uint256;
     using Strings for uint256;
     using Strings for uint8;
 
     /**
-     * Mitama Dutch Auction configuration
+     * Mitama Dutch Auction configration: configured by the team at deployment.
      */
     uint256 public DA_STARTING_PRICE = 0.6 ether;
     uint256 public DA_ENDING_PRICE = 0.1 ether;
-    // Decrement 0.05 ether every 3 hours = 0.001 ether every 216 sec
-    uint256 public DA_DECREMENT = 0.001 ether;
-    uint256 public DA_DECREMENT_FREQUENCY = 216;
-    // Mint starts: Sunday, October 30, 2022 9:00:00 PM GMT+09:00
+    // Decrement 0.05 ether every 3 hours ~= 0.00005 ether every 10 sec.
+    uint256 public DA_DECREMENT = 0.00005 ether;
+    uint256 public DA_DECREMENT_FREQUENCY = 10;
+    // Mint starts: Sunday, October 30, 2022 9:00:00 PM GMT+09:00: 1667131200
     uint256 public DA_STARTING_TIMESTAMP = 1667131200;
+    uint256 public DA_QUANTITY = TOKEN_QUANTITY - 1000 - FREE_MINT_QUANTITY;// 8580
+    // wait 1 week: 
+    uint256 public WAITING_FINAL_WITHDRAW = 60*60*24*7;
+    // Withdraw address
+    address public TEAM_WALLET = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
+
+    /**
+     * Mitama NFT configuration: configured by the team at deployment.
+     */
+    uint256 public TOKEN_QUANTITY = 10000;
+    uint256 public FREE_MINT_QUANTITY = 420;
+    // TODO: update all MAX_MINTS
+    uint256 public MAX_MINTS_PUBLIC = 2;
+    uint256 public MAX_MINTS_NORMAL_WL = 2;
+    uint256 public MAX_MINTS_SPECIAL_WL = 1;
+    uint256 public DISCOUNT_PERCENT_NORMAL_WL = 10;
+    uint256 public DISCOUNT_PERCENT_SPECIAL_WL = 30;
+    
+    /**
+     * Internal storages for Dutch Auction
+     */
     uint256 public DA_FINAL_PRICE;
-    uint256 public DA_QUANTITY = 8580;
     // How many each WL have been minted
     uint16 public NORMAL_WL_MINTED;
     uint16 public SPECIAL_WL_MINTED;
@@ -45,20 +66,6 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     bool public REMAINING_FUNDS_WITHDRAWN;
     // Event:
     event DAisFinishedAtPrice(uint256 finalPrice);
-
-    /**
-     * Mitama NFT Collection
-     */
-    uint256 public TOKEN_QUANTITY = 10000;
-    uint256 public FREE_MINT_QUANTITY = 420;
-    // TODO: update all MAX_MINTS
-    uint256 public MAX_MINTS_PUBLIC = 5;
-    uint256 public MAX_MINTS_NORMAL_WL = 5;
-    uint256 public MAX_MINTS_SPECIAL_WL = 5;
-    uint256 public DISCOUNT_PERCENT_NORMAL_WL = 10 ;
-    uint256 public DISCOUNT_PERCENT_SPECIAL_WL = 30 ;
-    mapping(address => uint256) public claimedAmount;
-
     //Struct for storing batch price data.
     struct TokenBatchPrice {
         uint128 pricePaid;
@@ -70,17 +77,19 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     mapping(address => TokenBatchPrice[]) public specialWLToTokenBatchPrices;
     mapping(address => bool) public userToHasMintedFreeMint;
 
-    // withdrawal Address
-    // TODO: update
-    address public TEAM_WALLET = 0xcDe7a88a1dada60CD5c888386Cc5C258D85941Dd;
-
+    /**
+     * Internal storages for NFT Collection
+     */
     // tokenURI
     string public baseURI;
     string public UNREVEALED_URI;
     bool public REVEALED;
+    // auraLevel by tokenId
+    mapping(uint256 => uint8) public auraLevel;
 
-    // tokenLevel of tokenId
-    mapping(uint256 => uint8) public tokenLevel;
+    /**
+     * Initializate contract
+     */
 
     constructor(
         string memory _baseURI, string memory _unrevealedURI
@@ -90,7 +99,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     }
     
     /**
-     * mint
+     * Mint
      */
 
     function currentPrice() public view returns (uint256) {
@@ -120,10 +129,8 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     }
 
     function mintDAPublic (uint8 quantity) public payable {
-        require(
-            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, userToTokenBatchPrices),
-            "Invalid mint request"
-        );
+        bool res = canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_NORMAL_WL, userToTokenBatchPrices);
+        if(!res) console.log("Invalid mint request");
         //Mint the quantity
         _safeMint(msg.sender, quantity);
     }
@@ -134,10 +141,10 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
         onlyNormalWhitelist(merkleProof)
     {
         require(
-            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, normalWLToTokenBatchPrices),
+            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_SPECIAL_WL, normalWLToTokenBatchPrices),
             "Invalid mint request"
         );
-        NORMAL_WL_MINTED++;
+        NORMAL_WL_MINTED += quantity;
         //Mint the quantity
         _safeMint(msg.sender, quantity);
     }
@@ -147,20 +154,20 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     function mintSpecialWL(bytes32[] calldata merkleProof, uint8 quantity)
         public
         payable 
-        onlyNormalWhitelist(merkleProof) //TODO
+        onlySpecialWhitelist(merkleProof) //TODO
     {
         require(
             canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, specialWLToTokenBatchPrices),
             "Invalid mint request"
         );
-        SPECIAL_WL_MINTED++;
+        SPECIAL_WL_MINTED += quantity;
         //Mint the quantity
         _safeMint(msg.sender, quantity);
     }
 
     function freeMint(bytes32[] memory proof)
         public
-        onlyNormalWhitelist(proof) //TODO
+        onlyFreeMintWhitelist(proof) //TODO
     {
         require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
         require(
@@ -176,9 +183,22 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
         //Mint them
         _safeMint(msg.sender, 1);
     }
+    
+    function teamMint(uint256 quantity, address receiver) public onlyOwner {
+        //Max supply
+        require(
+            totalSupply() + quantity <= TOKEN_QUANTITY,
+            "Max supply of 10,000 total!"
+        );
+
+        require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
+
+        //Mint the quantity
+        _safeMint(receiver, quantity);
+    }
 
     /**
-     * refund and withdraw
+     * Refund and Withdraw
      */
 
     function withdrawInitialFunds() public onlyOwner {
@@ -195,6 +215,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
             ((DA_FINAL_PRICE / 100) * 20);
         
         uint256 initialFunds = DAFunds - normalWLRefund - specialWLRefund;
+        console.log("initialFunds:", initialFunds);
 
         INITIAL_FUNDS_WITHDRAWN = true;
 
@@ -206,13 +227,17 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
 
     function withdrawFinalFunds() public onlyOwner {
         //Require this is 1 weeks after DA Start.
-        require(block.timestamp >= DA_STARTING_TIMESTAMP + 604800);
+        require(
+            block.timestamp >= DA_STARTING_TIMESTAMP + WAITING_FINAL_WITHDRAW, 
+            "Until the time have passed since DA started."
+        );
 
         uint256 finalFunds = address(this).balance;
 
         (bool succ, ) = payable(TEAM_WALLET).call{
             value: finalFunds
         }("");
+        console.log("finalFunds:", finalFunds);
         require(succ, "transfer failed");
     }
 
@@ -224,8 +249,10 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
         uint256 normalWLRefund = _getRefund(msg.sender, normalWLToTokenBatchPrices, DISCOUNT_PERCENT_NORMAL_WL);
         uint256 specialWLRefund = _getRefund(msg.sender, specialWLToTokenBatchPrices, DISCOUNT_PERCENT_SPECIAL_WL);
         uint256 totalRefund = publicRefund + normalWLRefund + specialWLRefund;
-        // payable: transfer ETH from this contract to others
+        console.log("totalRefund:", totalRefund);
+        require(address(this).balance > totalRefund, "Contract runs out of funds.");
         payable(msg.sender).transfer(totalRefund);
+
     }
 
     function _getRefund(
@@ -259,23 +286,23 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
 
 
     /**
-     * Update NFT's Aura
+     * Update NFT's AuraLevel
      */
-    function updateTokenLevel(uint256 tokenId, uint8 level) public onlyOwner {
+    function updateAuraLevel(uint256 tokenId, uint8 level) public onlyOwner {
         require(_exists(tokenId), "tokenId doesn't exist.");
-        require(6 > level && level > tokenLevel[tokenId], "Invalid level");
-        tokenLevel[tokenId] = level;
+        require(6 > level && level > auraLevel[tokenId], "Invalid level");
+        auraLevel[tokenId] = level;
     }
 
     /**
-     * Internal functions for dutch auction
+     * Internal functions for Dutch Auction
      */
 
     function canMintDA(
         address user,
         uint256 amount,
         uint8 quantity, 
-        uint256 _MAX_MINT, 
+        uint256 _MAX_MINT,
         mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices
     ) internal returns (bool) {
         //Require DA started
@@ -284,9 +311,11 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
             "DA has not started!"
         );
 
+        console.log("length:", _userToTokenBatchPrices[user].length);
+
         //Require max is up to MAX_MINTS_PUBLIC
         require(
-            quantity > 0 && _sumOfQuantityMinted(_userToTokenBatchPrices, user) + quantity < _MAX_MINT,
+            quantity > 0 && quantity + _sumOfQuantityMinted(_userToTokenBatchPrices, user) <= _MAX_MINT,
             "Quantity exceeds max mintable!"
         );
 
@@ -294,7 +323,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
 
         //Require enough ETH
         require(
-            msg.value >= quantity * _currentPrice,
+            amount >= quantity * _currentPrice,
             "Insufficient amount to mint."
         );
 
@@ -310,7 +339,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
             emit DAisFinishedAtPrice(DA_FINAL_PRICE);
         }
 
-        userToTokenBatchPrices[user].push(
+        _userToTokenBatchPrices[user].push(
             TokenBatchPrice(uint128(amount), quantity)
         );
 
@@ -321,10 +350,10 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
         mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices,
         address userAddr
     ) internal view returns (uint256) {
-        uint256 sumOfQuantityMinted;
-        if(_userToTokenBatchPrices[userAddr][0].pricePaid > 0) return 0;
         TokenBatchPrice[] memory batchPriceList = _userToTokenBatchPrices[userAddr];
-        for(uint256 i; i < batchPriceList.length; i++){
+        uint256 sumOfQuantityMinted;
+        if(batchPriceList.length == 0) return 0;
+        for(uint256 i=0; i < batchPriceList.length; i++){
             sumOfQuantityMinted += batchPriceList[i].quantityMinted;
         }
         return sumOfQuantityMinted;
@@ -361,10 +390,10 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     /* ERC721 primitive */
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         require(_exists(tokenId), "Invalid tokenId");
-        uint8 tokenLevel_ = tokenLevel[tokenId];
+        uint8 auraLevel_ = auraLevel[tokenId];
         if (REVEALED){
             return bytes(baseURI).length > 0 
-                ? string(abi.encodePacked(baseURI, tokenId.toString(), "-", tokenLevel_.toString())) 
+                ? string(abi.encodePacked(baseURI, tokenId.toString(), "-", auraLevel_.toString())) 
                 : "";
         } else {
             return UNREVEALED_URI;           
