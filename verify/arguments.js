@@ -3,7 +3,8 @@ const {arguments: argsPass} = require('../scripts/deployHolderPass')
 
 module.exports = [
     //...argsNFT,
-    ...argsPass
+    // ...argsPass,
+    
 ]
 
 /* How to deploy and verify */

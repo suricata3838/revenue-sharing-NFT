@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract RevenueBuffer is AccessControl{
+contract RevenueShare is AccessControl{
   using SafeMath for uint256;
   uint256 public receiveId;
   uint256 public requestId;
