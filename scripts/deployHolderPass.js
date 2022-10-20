@@ -34,3 +34,8 @@ main().catch((error) => {
     console.error(error);
     process.exitCode = 1;
   });
+
+/*
+ * Recent contract address on Goerli
+ **/
+//  PASS: 0x9EE05d60d3FAf8735e9fd9CC68E3f9F25537Cd84

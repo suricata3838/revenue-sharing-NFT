@@ -1,6 +1,5 @@
 const {ethers, network} = require("hardhat");
 
-
 async function main() {
     const [deployer] = await ethers.getSigners(network.config.accounts);
     const RevenueShare = await ethers.getContractFactory("RevenueShare");
@@ -15,9 +14,7 @@ main().catch((error) => {
     process.exitCode = 1;
   });
 
-
-// Memo: deploy and verify
-//   npx hardhat run --network rinkeby ./scripts/deployRevenueSharing.js
-//// Need to have artifacts before verification
-//   npx hardhat compile --force
-//   npx hardhat verify <deployed contract address> --network rinkeby
+/*
+ * Recent contract address on Goerli
+ **/
+// RevenueShare: 0xDF685944d8dbaBDdF01bC60a96957F04bb8359E3

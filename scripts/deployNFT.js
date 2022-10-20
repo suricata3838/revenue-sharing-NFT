@@ -2,42 +2,21 @@ const hre = require("hardhat");
 const { keccak256, toUtf8Bytes } = hre.ethers.utils;
 const { MerkleTree } = require('merkletreejs')
 
-const name = "Dynamic";
-const symbol = "DM";
-const baseURI = "https://gateway.pinata.cloud/ipfs/QmXMJo4qPdobEfL75ChQFpNTm6z1DrBzNZwgtXJSmReRXx/";
-const tokenPrice = hre.ethers.utils.parseEther("0.1"); //float?
-const maxTokens = 100;
-const maxMints = 5;
+const baseURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/Mitama_dir/";
+const unrevealedURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/Mitama_dir/unreleave";
 
-const arguments = [
-    name,
-    symbol,
-    baseURI,
-    tokenPrice,
-    maxTokens,
-    maxMints
-]
+const arguments = [baseURI, unrevealedURI];
 module.exports = {
     arguments
 }
 
-// async function deployDynamicNFT() {
-//     const [deployer] = await hre.ethers.getSigners();
-//     const DynamicNFT = await hre.ethers.getContractFactory("DynamicNFT");
-//     const dynamicNFT = await DynamicNFT.deploy(
-//         name, symbol, baseURI, tokenPrice, maxTokens, maxMints);
-//     await dynamicNFT.deployed();
-//     console.log("Contract deployed to:", dynamicNFT.address, "from ", deployer.address);
-// }
-
-async function deployDynamicWLNFT() {
+async function deployTestDAWLNFT() {
     const [deployer] = await hre.ethers.getSigners();
-    const DynamicWLNFT = await hre.ethers.getContractFactory("DynamicWLNFT");
-    const dynamicWLNFT = await DynamicWLNFT.deploy(
-        name, symbol, baseURI, tokenPrice, maxTokens, maxMints);
-    console.log("dynamicWLNFT:", dynamicWLNFT.deployTransaction.hash);
-    await dynamicWLNFT.deployed();
-    console.log("Contract deployed to:", dynamicWLNFT.address, "from ", deployer.address);
+    const TestDAWLNFT = await hre.ethers.getContractFactory("TestDAWLNFT");
+    const testDAWLNFT = await TestDAWLNFT.deploy(baseURI, unrevealedURI);
+    console.log("testDAWLNFT:", testDAWLNFT.deployTransaction.hash);
+    await testDAWLNFT.deployed();
+    console.log("Contract deployed to:", testDAWLNFT.address, "from ", deployer.address);
 }
 
 const setupWL = async() => { 
@@ -81,8 +60,8 @@ const setupWL = async() => {
 
 const main = async () => {
     try{
-        // await deployDynamicWLNFT();
-        await setupWL();
+        await deployTestDAWLNFT();
+        // await setupWL();
     }catch(e){
         console.error(e);
     }
@@ -93,5 +72,7 @@ main().catch((error) => {
     process.exitCode = 1;
 });
 
-//// Recent deployment contracts
-// 0x9EE05d60d3FAf8735e9fd9CC68E3f9F25537Cd84
+/*
+ * Recent contract address on Goerli
+ **/
+//  DAWLNFT: 0xcDe7a88a1dada60CD5c888386Cc5C258D85941Dd
