@@ -21,7 +21,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "./MerkleWhitelist.sol";
 import "hardhat/console.sol";
 
-contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
+contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     using SafeMath for uint256;
     using Strings for uint256;
     using Strings for uint8;
