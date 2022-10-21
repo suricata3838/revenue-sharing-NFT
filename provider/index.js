@@ -11,10 +11,12 @@ const {PRIVKEY, GOERLI_API} = process.env;
 const firebaseConfig = require("../firebase-config.json");
 
 const _network = "goerli";
-const RevenueBufferAbi  =  require ("../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.json");
-const RevenueBufferAddress = '0xf4102568FeBBbca13C8814501f598080e32A503E';
-const HolderPassAbi = require ("../artifacts/contracts/HolderPass.sol/HolderPass.json");
-const HolderPassAddress = "0x9EE05d60d3FAf8735e9fd9CC68E3f9F25537Cd84";
+const RevenueShareAbi  =  require ("../artifacts/contracts/active/RevenueShare.sol/RevenueShare.json");
+const RevenueShareAddress = '0xB595a5bF216b9E185037ABe884A8bBe48c78d478';
+const RevenueShareForDonationAbi = require ("../artifacts/contracts/active/RevenueShareForDonation.sol/RevenueShareForDonation.json");
+const RevenueShareForDonationAddress = "0x14B71a54DF5007de2bEe3c16892D6da7f0D459B8";
+const HolderPassAbi = require ("../artifacts/contracts/active/HolderPass.sol/HolderPass.json");
+const HolderPassAddress = "0xacad68aF067A557092634c6d5Bc528db27B613e6";
 
 const tokenLevelList = [0, 0.01, 0.5, 1.0, 3.0, 5.0]; //ETH for LevelUp of DynamicNFT
 
@@ -26,55 +28,70 @@ const signer = () => {
 }
 
 const getContract = (_signer, address, abi) => {
+  console.log("abi:", abi.abi.length);
   const Contract = new ethers.Contract(address, abi.abi, _signer);
   const contractInst = Contract.attach(address);
   return contractInst;
 }
 
 const updateRequest = async (tokenId, holderList) => {
-  const revenueBuffer = getContract(signer(), RevenueBufferAddress, RevenueBufferAbi);
+  const RevenueShare = getContract(signer(), RevenueShareAddress, RevenueShareAbi);
 
   // Confirm: setTokenAddress() is ready.
-  const address_WETH = await revenueBuffer.WETH();
+  const address_WETH = await RevenueShare.WETH();
   console.log("address_WETH:", address_WETH);
   if(address_WETH == "0x00") return;
 
   try {
     // write
-    const tx = await revenueBuffer.addRequest(tokenId, holderList);
+    const tx = await RevenueShare.addRequest(tokenId, holderList);
     console.log("update tx-hash:", tx.hash);
     await tx.wait();
     // read
-    const receiveId = ethers.utils.formatEther(await revenueBuffer.receiveId());
+    const receiveId = ethers.utils.formatEther(await RevenueShare.receiveId());
     console.log("current receiveId:", receiveId);
   }catch(e){
     console.error(e);
   }
 }
 
+const updateRequestForDonation = async (tokenId) => {
+  const RevenueShareForDonation = getContract(signer(), RevenueShareForDonationAddress, RevenueShareForDonationAbi);
+
+  // Confirm: setTokenAddress() is ready.
+  const address_WETH = await RevenueShareForDonation.WETH();
+  console.log("address_WETH:", address_WETH);
+  if(address_WETH == "0x00") return;
+
+  // try {
+  //   // write
+  //   const tx = await RevenueShareForDonation.addRequest(tokenId);
+  //   console.log("update tx-hash:", tx.hash);
+  //   await tx.wait();
+  //   // read
+  //   const receiveId = ethers.utils.formatEther(await RevenueShareForDonation.receiveId());
+  //   console.log("current receiveId:", receiveId);
+  // }catch(e){
+  //   console.error(e);
+  // }
+}
+
 const fetchHolderList = async(tokenId) => {
   const holderPass = getContract(signer(), HolderPassAddress, HolderPassAbi);
   try {
-    // const holderList = await holderPass.indexedAccountsByToken(tokenId)
-    const holderList = await holderPass.accountsByToken(tokenId);
-    return holderList;
+    console.log("tokneId:", tokenId); //222
+    console.log("name:", await holderPass.name());
+    const totalHolders = await holderPass.totalHolders(tokenId);
+    if(totalHolders > 0) {
+      const holderList = await holderPass.indexedAccountsByToken(tokenId);
+      if(holderList.length == 0) return 0;
+      return holderList;
+    }
+    return 0;
   }catch(e){
     console.error(e);
   }
 }
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-// Initialize Cloud Firestore and get a reference to the service
-const db = getFirestore(app);
-
-const client = new OpenSeaStreamClient({
-    token: 'openseaApiKey',
-    network: Network.TESTNET,
-    connectOptions: {
-      transport: WebSocket
-    }
-  });
 
 const getTokenLevel = (price) => {
   var level;
@@ -86,6 +103,7 @@ const getTokenLevel = (price) => {
   return level;
 }
 
+// TODO: Update "sale_price"
 const sampleEvent = {
     "event_type": "item_sold",
     "sent_at": "2022-04-25T23:32:14.486643+00:00",
@@ -116,7 +134,7 @@ const sampleEvent = {
           "usd_price": "3067.19"
         },
         "quantity": 1,
-        "sale_price": 100000000000000000,
+        "sale_price": 4.1 * 10 ** 17,
         "taker": { "address": "0x39f3b9C8585Fc57A57EC39322E92Face43484D97" },
         "transaction": {
           "hash": "0x57135fca40b927fbd741f5a21626c1c4c84e7c1036bb50d3158e2fa62a80c941",
@@ -228,22 +246,19 @@ const main = async (event) => {
     sale_price: currentPrice,
     maker_address: makerAddress
   } = parseItemSoldEvent(event);
-  console.log("currentPrice:", currentPrice);
   const priceLastSold = await getItemPriceLastSold(tokenId);
-
-  if(isPriceRaised(currentPrice, priceLastSold)) {
-    await injectItem(item);
-    // when do we issue the Holder Pass??
-    await mintPass(tokenId, makerAddress);
-    const holderList = (await fetchHolderList(tokenId)).length !=0
-    ? await fetchHolderList(tokenId)
-    : await getHolderList(tokenId);
+  console.log("current-vs-pre:", currentPrice, " vs ", priceLastSold);
+  //if(isPriceRaised(currentPrice, priceLastSold)) {
+  if(true){
+    await injectItem(parseItemSoldEvent(event));
+    const fetchedHolderList = await fetchHolderList(tokenId);
+    const holderList = fetchedHolderList.length > 0 ? fetchedHolderList : await getHolderList(tokenId);
     console.log(holderList);
     await updateRequest(tokenId, holderList);
-    // TODO: Call mint of holderPassNFT
+    await updateRequestForDonation(tokenId);
     console.log("isLevelRaised", isLevelRaised);
-    // when do we issue the Holder Pass??
-    // await mintPass(tokenId, makerAddress);
+    /* PassHolder will get the royalty at the next round of itemSold event, not this round. */
+    await mintPass(tokenId, makerAddress);
   };
 
   if(isLevelRaised(currentPrice, priceLastSold)) {
@@ -254,8 +269,31 @@ const main = async (event) => {
 }
 
 // await injectItem(parseItemSoldEvent(sampleEvent));
-await main(sampleEvent);
 
-client.onItemSold('mitama-test-1', (e) => main(e));
+/**
+ * App Initialization, webcoket
+ */
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+// Initialize Cloud Firestore and get a reference to the service
+const db = getFirestore(app);
+
+const client = new OpenSeaStreamClient({
+    token: 'openseaApiKey',
+    network: Network.TESTNET,
+    connectOptions: {
+      transport: WebSocket
+    }
+  });
+
+//  main(sampleEvent);
+
+// fetchHolderList(1);
+updateRequestForDonation(1);
+// client.onItemSold('daerc721', (e) => main(e));
+
+// onEvent: WETH is transfered to this contract
+// run revenueShare.getWETHbalance();
+// run revenueShareForDonation.getWETHbalance();
 
 // if the websocket client is disconnected, automatically try to recoonect it.
