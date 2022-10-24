@@ -39,7 +39,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
     constructor(
         string memory _name,
         string memory _symbol,
-        string memory _bsaeURI
+        string memory _baseURI
     ) {
         ERC165Storage.layout().setSupportedInterface(
             type(IERC165).interfaceId,
@@ -51,7 +51,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         );
 
         ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
-        l.baseURI = _bsaeURI;
+        l.baseURI = _baseURI;
         name = _name;
         symbol = _symbol;
         _grantRole(MINTER_ROLE, msg.sender);
