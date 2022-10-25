@@ -4,77 +4,109 @@ const { initializeApp }  = require ("firebase/app");
 const { getFirestore, Timestamp }  = require ("firebase/firestore");
 const { collection, setDoc, addDoc, getDocs, where, query, orderBy, limit }  = require ("firebase/firestore");
 const { ethers, utils }  = require ("ethers");
+
 const dotenv  = require ("dotenv");
 dotenv.config();
 // const { ethers }  = require "hardhat";
-const {PRIVKEY, GOERLI_API} = process.env;
+const {PRIVKEY, GOERLI_API, GOERLI_APIKEY} = process.env;
 const firebaseConfig = require("../firebase-config.json");
 
 const _network = "goerli";
-const RevenueBufferAbi  =  require ("../artifacts/contracts/RevenueBuffer.sol/RevenueBuffer.json");
-const RevenueBufferAddress = '0xf4102568FeBBbca13C8814501f598080e32A503E';
-const HolderPassAbi = require ("../artifacts/contracts/HolderPass.sol/HolderPass.json");
-const HolderPassAddress = "0x9EE05d60d3FAf8735e9fd9CC68E3f9F25537Cd84";
+const TestDAWLNFTAbi = require("../artifacts/contracts/active/TestDAWLNFT.sol/TestDAWLNFT.json");
+const TestDAWLNFTAddress = '0x931bf686e0768cfd7210e830a0b371e6b0e48af5'
+const RevenueShareAbi  =  require ("../artifacts/contracts/active/RevenueShare.sol/RevenueShare.json");
+const RevenueShareAddress = '0xB595a5bF216b9E185037ABe884A8bBe48c78d478';
+const RevenueShareForDonationAbi = require ("../artifacts/contracts/active/RevenueShareForDonation.sol/RevenueShareForDonation.json");
+const RevenueShareForDonationAddress = '0x14B71a54DF5007de2bEe3c16892D6da7f0D459B8';
+const HolderPassAbi = require ("../artifacts/contracts/active/HolderPass.sol/HolderPass.json");
+const HolderPassAddress = '0xacad68aF067A557092634c6d5Bc528db27B613e6';
+const WETH_Address = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6';
 
 const tokenLevelList = [0, 0.01, 0.5, 1.0, 3.0, 5.0]; //ETH for LevelUp of DynamicNFT
 
 const signer = () => {
   const network = ethers.providers.getNetwork(_network);
-  const alchemyProvider = new ethers.providers.AlchemyProvider(network, GOERLI_API);
+  const alchemyProvider = new ethers.providers.AlchemyProvider(network, GOERLI_APIKEY);
   const signer = new ethers.Wallet(PRIVKEY, alchemyProvider);
   return signer;
 }
 
 const getContract = (_signer, address, abi) => {
-  const Contract = new ethers.Contract(address, abi.abi, _signer);
-  const contractInst = Contract.attach(address);
-  return contractInst;
+  const contractInst = new ethers.Contract(address, abi.abi, _signer);
+  const contractInstAddr = contractInst.attach(address);
+  return contractInstAddr;
 }
 
 const updateRequest = async (tokenId, holderList) => {
-  const revenueBuffer = getContract(signer(), RevenueBufferAddress, RevenueBufferAbi);
+  const revenueShare = getContract(signer(), RevenueShareAddress, RevenueShareAbi);
 
   // Confirm: setTokenAddress() is ready.
-  const address_WETH = await revenueBuffer.WETH();
-  console.log("address_WETH:", address_WETH);
-  if(address_WETH == "0x00") return;
+  const address_WETH = await revenueShare.WETH();
+  if(address_WETH == '0x00') {
+  // Revert becourse of "failed setWETH()"
+    const tx = await revenueShare.setWETH(WETH_Address);
+    console.log("setWETH txHash:", tx.hash);
+    await tx.wait();    
+  }
 
   try {
     // write
-    const tx = await revenueBuffer.addRequest(tokenId, holderList);
-    console.log("update tx-hash:", tx.hash);
+    // Error: "execution reverted: request amount should be > 0"
+    // TODO: send ETH to the revenueShare
+    const tx = await revenueShare.addRequest(tokenId, holderList);
+    console.log("addRequest txHash:", tx.hash);
     await tx.wait();
     // read
-    const receiveId = ethers.utils.formatEther(await revenueBuffer.receiveId());
-    console.log("current receiveId:", receiveId);
+    const receiveId = (await revenueShare.receiveId()).toString();
+    console.log("receiveId:", receiveId);
+    return receiveId ? receiveId : 0;
   }catch(e){
-    console.error(e);
+    console.log("Error:", e.code, ":", e.reason)
+    console.log(JSON.parse(e.error.error.body).error.message)
+  }
+}
+
+const updateRequestForDonation = async (tokenId) => {
+  const revenueShareForDonation = getContract(signer(), RevenueShareForDonationAddress, RevenueShareForDonationAbi);
+
+  // Confirm: setTokenAddress() is ready.
+  const address_WETH = await revenueShareForDonation.WETH();
+  if(address_WETH == '0x00') {
+    console.log("address_WETH:", address_WETH);
+    const tx = await revenueShareForDonation.setWET(WETH_Address);
+    console.log("Donaiton setWET tx-hash:", tx.hash);
+    await tx.wait();    
+  }
+
+  try {
+    // write
+    const tx = await revenueShareForDonation.addRequest(tokenId);
+    console.log("Donation addRequest txhash:", tx.hash);
+    await tx.wait();
+    // read
+    const receiveId = (await revenueShareForDonation.receiveId()).toString();
+    console.log("receiveId:", receiveId);
+  }catch(e){
+    console.log("Error:", e.code, ":", e.reason)
+    console.log(JSON.parse(e.error.error.body).error.message)
   }
 }
 
 const fetchHolderList = async(tokenId) => {
   const holderPass = getContract(signer(), HolderPassAddress, HolderPassAbi);
   try {
-    // const holderList = await holderPass.indexedAccountsByToken(tokenId)
-    const holderList = await holderPass.accountsByToken(tokenId);
-    return holderList;
+    const totalHolders = (await holderPass.totalHolders(tokenId)).toString();
+    if(totalHolders > 0) {
+      const holderList = await holderPass.indexedAccountsByToken(tokenId);
+      if(holderList.length == 0) return 0;
+      return holderList;
+    }
+    return 0;
   }catch(e){
-    console.error(e);
+    console.log("Error:", e.code, ":", e.reason)
+    console.log(JSON.parse(e.error.error.body).error.message)
   }
 }
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-// Initialize Cloud Firestore and get a reference to the service
-const db = getFirestore(app);
-
-const client = new OpenSeaStreamClient({
-    token: 'openseaApiKey',
-    network: Network.TESTNET,
-    connectOptions: {
-      transport: WebSocket
-    }
-  });
 
 const getTokenLevel = (price) => {
   var level;
@@ -86,8 +118,9 @@ const getTokenLevel = (price) => {
   return level;
 }
 
-const sampleEvent = {
-    "event_type": "item_sold",
+// TODO: Update "sale_price"
+const getEvent = (id, price) => {
+    return {"event_type": "item_sold",
     "sent_at": "2022-04-25T23:32:14.486643+00:00",
     "payload": {
         "event_timestamp": "2022-04-21T16:46:46.240222+00:00",
@@ -95,15 +128,15 @@ const sampleEvent = {
         "is_private": false,
         "listing_type": null,
         "item": {
-          "nft_id":"ethereum/0x8a90cab2b38dba80c64b7734e58ee1db38b8992e/222",
-          "permalink":"https://opensea.io/assets/0x8a90cab2b38dba80c64b7734e58ee1db38b8992e/222",
+          "nft_id":`ethereum/0x8a90cab2b38dba80c64b7734e58ee1db38b8992e/${id}`,
+          "permalink":`https://opensea.io/assets/0x8a90cab2b38dba80c64b7734e58ee1db38b8992e/${id}`,
           "chain": { "name": "Goerli" },
           "metadata": {
               "name": "Mitama test #1",
               "description": "A community-driven collectibles project featuring art by Burnt Toast. Doodles come...",
               "image_url": "https://lh3.googleusercontent.com/R7wtoDNdmM7GhTvVjr4JGA6q60z44Hn2nIymPjAEXcjnD8oBPxQYPA1GkrCnvepPM1Sc8DlIHZql4Yucj4ger1jnWmxmuRFwIC_JRw",
               "animation_url": null,
-              "metadata_url": "https://opensea.mypinata.cloud/ipfs/QmPMc4tcBsMqLRuCQtPmPe84bpSjrC3Ky7t3JWuHXYB4aS/222",
+              "metadata_url": `https://opensea.mypinata.cloud/ipfs/QmPMc4tcBsMqLRuCQtPmPe84bpSjrC3Ky7t3JWuHXYB4aS/${id}`,
           },
         },
         "maker": { "address": "0xcDe7a88a1dada60CD5c888386Cc5C258D85941Dd" },
@@ -116,7 +149,7 @@ const sampleEvent = {
           "usd_price": "3067.19"
         },
         "quantity": 1,
-        "sale_price": 100000000000000000,
+        "sale_price": price * 10 ** 18,
         "taker": { "address": "0x39f3b9C8585Fc57A57EC39322E92Face43484D97" },
         "transaction": {
           "hash": "0x57135fca40b927fbd741f5a21626c1c4c84e7c1036bb50d3158e2fa62a80c941",
@@ -124,7 +157,7 @@ const sampleEvent = {
         }
     }
   }
-
+}
 const parseItemSoldEvent = (event) => {
   const payload = event.payload;
   const nft_id = payload.item.nft_id.split('/')[2];
@@ -171,13 +204,13 @@ const getItemPriceLastSold = async(nft_id) => {
     });
     return sale_price ? sale_price : null;
    } catch(e) {
-    console.error("Error getItemPriceLastSold:", e);
+    console.log("Error:", e.code, ":", e.reason)
+    console.log(JSON.parse(e.error.error.body).error.message)
   }
 }
 
 const getItemSoldEvents = async(nft_id) => {
   const itemSoldRef = collection(db, "itemSoldEvent");
-  // TODO: Limit(number) needs to be update to 7
   const q = query(itemSoldRef, where("nft_id", "==", nft_id), orderBy("sale_price", "desc"), limit(3));
   try {
     const querySnapshot = await getDocs(q);
@@ -191,7 +224,6 @@ const getItemSoldEvents = async(nft_id) => {
 
 const getHolderList = async(tokenId) => {
   const itemSoldRef = collection(db, "itemSoldEvent");
-  // TODO: Limit(number) needs to be update to 7
   const q = query(itemSoldRef, where("nft_id", "==", tokenId), orderBy("sale_price", "desc"), limit(7));
   try {
     const querySnapshot = await getDocs(q);
@@ -210,11 +242,40 @@ const mintPass = async(tokenId, accountTo) => {
   try {
     // const holderList = await holderPass.indexedAccountsByToken(tokenId)
     const tx = await holderPass.mintPass(accountTo, tokenId);
-    console.log("update tx-hash:", tx.hash);
+    console.log("update txHash:", tx.hash);
     await tx.wait();
   }catch(e){
-    console.error(e);
+    console.log("Error:", e.code, ":", e.reason)
+    console.log(JSON.parse(e.error.error.body).error.message)
   }
+}
+
+const updateTokenLevel = async(tokenId, level) => {
+    const NFT = getContract(signer(), TestDAWLNFTAddress, TestDAWLNFTAbi);
+    try {
+      const tx = await NFT.updateAuraLevel(tokenId, level);
+      console.log("token level-up txHash:", tx.hash);
+      await tx.wait();
+    }catch(e){
+      console.log("Error:", e.code, ":", e.reason)
+      console.log(JSON.parse(e.error.error.body).error.message)
+    }
+}
+
+const sendETHToAddr = async(_addr) => {
+    const amountInEther = '0.001'
+    let tx = {
+        to: _addr,
+        value: ethers.utils.parseEther(amountInEther)
+    }
+    try {
+      const res = await signer().sendTransaction(tx)
+      console.log("sendEth:", res.hash)
+      return res
+    } catch(e) {
+      console.log("Error:", e.code, ":", e.reason)
+      console.log(JSON.parse(e.error.error.body).error.message)
+    }
 }
 
 // Buyer nees to pay for 1.1x price.
@@ -223,39 +284,65 @@ const isLevelRaised =(current, last) => getTokenLevel(current) > getTokenLevel(l
 
 // run onItemsold
 const main = async (event) => {
+  await sendETHToAddr(RevenueShareAddress);
+  await sendETHToAddr(RevenueShareForDonationAddress);
+
   const {
     nft_id: tokenId,
     sale_price: currentPrice,
     maker_address: makerAddress
   } = parseItemSoldEvent(event);
-  console.log("currentPrice:", currentPrice);
   const priceLastSold = await getItemPriceLastSold(tokenId);
-
-  if(isPriceRaised(currentPrice, priceLastSold)) {
-    await injectItem(item);
-    // when do we issue the Holder Pass??
-    await mintPass(tokenId, makerAddress);
-    const holderList = (await fetchHolderList(tokenId)).length !=0
-    ? await fetchHolderList(tokenId)
-    : await getHolderList(tokenId);
-    console.log(holderList);
+  console.log("current-vs-pre:", currentPrice, " vs ", priceLastSold);
+  //if(isPriceRaised(currentPrice, priceLastSold)) {
+  if(true){
+    await injectItem(parseItemSoldEvent(event));
+    const fetchedHolderList = await fetchHolderList(tokenId);
+    console.log("holderLength:", fetchedHolderList.length)
+    const holderList = fetchedHolderList.length > 0 ? fetchedHolderList : await getHolderList(tokenId);
+    console.log("holderList:", holderList);
     await updateRequest(tokenId, holderList);
-    // TODO: Call mint of holderPassNFT
-    console.log("isLevelRaised", isLevelRaised);
-    // when do we issue the Holder Pass??
-    // await mintPass(tokenId, makerAddress);
+    await updateRequestForDonation(tokenId);
+    /* PassHolder will get the royalty at the next round of itemSold event, not this round. */
+    await mintPass(tokenId, makerAddress);
   };
 
-  if(isLevelRaised(currentPrice, priceLastSold)) {
-    console.log("token level up!");
+  console.log("isLevelRaised", isLevelRaised(currentPrice, priceLastSold));
+  // if(isLevelRaised(currentPrice, priceLastSold)) {
+  if(true){
     const level = getTokenLevel(currentPrice);
-    // call updateTokenLevel(uint256 tikenId, uint8 level) of MitamaNFT
+    console.log("current level:", level);
+    await updateTokenLevel(tokenId, level);// call updateTokenLevel(uint256 tikenId, uint8 level) of MitamaNFT
   }
 }
 
 // await injectItem(parseItemSoldEvent(sampleEvent));
-await main(sampleEvent);
 
-client.onItemSold('mitama-test-1', (e) => main(e));
+/**
+ * App Initialization, webcoket
+ */
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+// Initialize Cloud Firestore and get a reference to the service
+const db = getFirestore(app);
 
-// if the websocket client is disconnected, automatically try to recoonect it.
+const client = new OpenSeaStreamClient({
+    token: 'openseaApiKey',
+    network: Network.TESTNET,
+    connectOptions: {
+      transport: WebSocket
+    }
+  });
+
+main(getEvent(0, 0.51));
+
+/**
+ * Event Watcher to watch onItemSold of Opensea
+ */
+// client.onItemSold('daerc721', (e) => main(e));
+
+// onEvent: WETH is transfered to this contract
+// run revenueShare.getWETHbalance();
+// run revenueShareForDonation.getWETHbalance();
+
+// If the websocket client is disconnected, automatically try to recoonect it.

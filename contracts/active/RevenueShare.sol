@@ -72,7 +72,7 @@ contract RevenueShare is AccessControl{
   }
 
   function addRequest(uint tokenId, address[] memory m) external onlyRole(DEFAULT_ADMIN_ROLE) {
-    updateReceivedWETH();
+    _updateReceivedWETH();
     ++requestId;
     Payment memory payment = receiveIdToPayments[requestId];
     require(payment.amount > 0, "request amount should be > 0");
