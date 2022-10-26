@@ -18,10 +18,11 @@ import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MerkleWhitelist.sol";
 import "hardhat/console.sol";
 
-contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
+contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist, ReentrancyGuard {
     using SafeMath for uint256;
     using Strings for uint256;
     using Strings for uint8;
@@ -201,7 +202,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
      * Refund and Withdraw
      */
 
-    function withdrawInitialFunds() public onlyOwner {
+    function withdrawInitialFunds() public onlyOwner nonReentrant {
         require(
             !INITIAL_FUNDS_WITHDRAWN,
             "Initial funds have already been withdrawn."
@@ -225,7 +226,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
         require(succ, "transfer failed");
     }
 
-    function withdrawFinalFunds() public onlyOwner {
+    function withdrawFinalFunds() public onlyOwner nonReentrant {
         //Require this is 1 weeks after DA Start.
         require(
             block.timestamp >= DA_STARTING_TIMESTAMP + WAITING_FINAL_WITHDRAW, 
@@ -242,7 +243,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     }
 
     /* Refund by owner */
-    function refundExtraETH() public {
+    function refundExtraETH() public nonReentrant {
         require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
 
         uint256 publicRefund = _getRefund(msg.sender, userToTokenBatchPrices, 0);
