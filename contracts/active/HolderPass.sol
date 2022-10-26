@@ -51,7 +51,12 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             true
         );
 
+<<<<<<< HEAD
         baseURI = _baseURI;
+=======
+        ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
+        l.baseURI = _baseURI;
+>>>>>>> 1c1a329db5ad66563c769b917e874c3ded92a42b
         name = _name;
         symbol = _symbol;
         _grantRole(MINTER_ROLE, msg.sender);

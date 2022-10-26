@@ -39,3 +39,4 @@ main().catch((error) => {
  * Recent contract address on Goerli
  **/
 //  PASS: 0x9EE05d60d3FAf8735e9fd9CC68E3f9F25537Cd84
+//  latest PASS: 0xacad68aF067A557092634c6d5Bc528db27B613e6

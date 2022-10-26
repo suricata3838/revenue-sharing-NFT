@@ -35,12 +35,12 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     uint256 public DA_DECREMENT = 0.00001 ether;
     uint256 public DA_DECREMENT_FREQUENCY = 1;
     // Mint starts: Sunday, October 30, 2022 9:00:00 PM GMT+09:00: 1667131200
-    uint256 public DA_STARTING_TIMESTAMP = 1667131200;
+    uint256 public DA_STARTING_TIMESTAMP = 1666288694;
     uint256 public DA_QUANTITY = 3;
     // wait 1 week: 
     uint256 public WAITING_FINAL_WITHDRAW = 60*5;
     // Withdraw address
-    address public TEAM_WALLET = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
+    address public TEAM_WALLET = 0xcDe7a88a1dada60CD5c888386Cc5C258D85941Dd;
 
     /**
      * Mitama NFT configuration: configured by the team at deployment.
