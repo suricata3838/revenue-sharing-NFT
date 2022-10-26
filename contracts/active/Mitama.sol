@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "./MerkleWhitelist.sol";
 import "hardhat/console.sol";
 
-contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
+contract Mitama is ERC721A, Ownable, MerkleWhitelist{
     using SafeMath for uint256;
     using Strings for uint256;
     using Strings for uint8;
@@ -28,7 +28,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
      */
     uint256 public DA_STARTING_PRICE = 0.6 ether;
     uint256 public DA_ENDING_PRICE = 0.1 ether;
-    // Decrement 0.05 ether every 3 hours ~= 0.00005 ether every 5 sec.
+    // Decrement 0.05 ether every 1.5 hours ~= 0.00005 ether every 5 sec.
     uint256 public DA_DECREMENT = 0.00005 ether;
     uint256 public DA_DECREMENT_FREQUENCY = 5;
     // Mint starts: Sunday, October 30, 2022 9:00:00 PM GMT+09:00: 1667131200
@@ -45,7 +45,7 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
     uint256 public TOKEN_QUANTITY = 10000;
     uint256 public FREE_MINT_QUANTITY = 420;
     // TODO: update all MAX_MINTS
-    uint256 public MAX_MINTS_PUBLIC = 2;
+    uint256 public MAX_MINTS_PUBLIC = 1;
     uint256 public MAX_MINTS_NORMAL_WL = 2;
     uint256 public MAX_MINTS_SPECIAL_WL = 1;
     uint256 public DISCOUNT_PERCENT_NORMAL_WL = 10;

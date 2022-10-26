@@ -1,8 +1,10 @@
 const hre = require("hardhat");
 
-const name = "HolderPass"
-const symbol = "HPS"
+const name = "MitamaHolderPass"
+const symbol = "MHP"
 const uri = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/pass_meta/"
+// `baseURI` + gold = metadata of the gold pass
+// `baseURI` + silver = metadata of the silver pass
 
 const arguments = [
     name,

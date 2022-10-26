@@ -10,13 +10,13 @@ module.exports = {
     arguments
 }
 
-async function deployTestDAWLNFT() {
+async function deployMitama() {
     const [deployer] = await hre.ethers.getSigners();
-    const TestDAWLNFT = await hre.ethers.getContractFactory("TestDAWLNFT");
-    const testDAWLNFT = await TestDAWLNFT.deploy(baseURI, unrevealedURI);
-    console.log("testDAWLNFT:", testDAWLNFT.deployTransaction.hash);
-    await testDAWLNFT.deployed();
-    console.log("Contract deployed to:", testDAWLNFT.address, "from ", deployer.address);
+    const Mitama = await hre.ethers.getContractFactory("TestDAWLNFT");
+    const mitama = await Mitama.deploy(baseURI, unrevealedURI);
+    console.log("testDAWLNFT:", mitama.deployTransaction.hash);
+    await mitama.deployed();
+    console.log("Contract deployed to:", mitama.address, "from ", deployer.address);
 }
 
 const setupWL = async() => { 
@@ -60,7 +60,7 @@ const setupWL = async() => {
 
 const main = async () => {
     try{
-        await deployTestDAWLNFT();
+        await deployMitama();
         // await setupWL();
     }catch(e){
         console.error(e);

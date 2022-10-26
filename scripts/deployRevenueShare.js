@@ -1,4 +1,5 @@
 const {ethers, network} = require("hardhat");
+const materialIdList = require("../_file/materialIdList.json");
 
 async function deployRevenueShare() {
     const [deployer] = await ethers.getSigners(network.config.accounts);
@@ -8,12 +9,7 @@ async function deployRevenueShare() {
 
     console.log("revenueShare deployed to:", revenueShare.address, "from ", deployer.address);
 }
-
-const materialList = [0,1,0,1,0,1,0,1,0,1];
-const donationList = [
-  "0xcDe7a88a1dada60CD5c888386Cc5C258D85941Dd",
-  "0x39f3b9C8585Fc57A57EC39322E92Face43484D97"
-];
+console.log("materialIdList:", materialIdList);
 /**
  * material type to order convertion:
  */
@@ -28,15 +24,15 @@ const donationList = [
 async function deployRevenueShareForDonation() {
   const [deployer] = await ethers.getSigners(network.config.accounts);
   const RevenueShareForDonation = await ethers.getContractFactory("RevenueShareForDonation");
-  const revenueShareForDonation = await RevenueShareForDonation.connect(deployer).deploy(materialList, donationList);
+  const revenueShareForDonation = await RevenueShareForDonation.connect(deployer).deploy(materialIdList, donationList);
   await revenueShareForDonation.deployed();
 
   console.log("revenueShareForDonation deployed to:", revenueShareForDonation.address, "from ", deployer.address);
 }
 
 async function main() {
-  await deployRevenueShare();
-  await deployRevenueShareForDonation();
+  // await deployRevenueShare();
+  // await deployRevenueShareForDonation();
 }
 
 main().catch((error) => {
@@ -45,8 +41,7 @@ main().catch((error) => {
   });
 
 module.exports = [
-  materialList,
-  donationList
+  materialIdList
 ]
 
 /*
