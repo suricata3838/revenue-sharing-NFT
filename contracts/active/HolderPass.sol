@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-//////////////////////////////////
-//  ____   ____  _____ _____
-// |    \ /    |/ ___// ___/
-// |  o  )  o  (   \_(   \_ 
-// |   _/|     |\__  |\__  |
-// |  |  |  _  |/  \ |/  \ |
-// |  |  |  |  |\    |\    |
-// |__|  |__|__| \___| \___|                       
+//////////////////////////////////////////////////////////////////////////////////////////
+// ___  ____ _                          _   _       _     _            ______             
+// |  \/  (_) |                        | | | |     | |   | |           | ___ \            
+// | .  . |_| |_ __ _ _ __ ___   __ _  | |_| | ___ | | __| | ___ _ __  | |_/ /_ _ ___ ___ 
+// | |\/| | | __/ _` | '_ ` _ \ / _` | |  _  |/ _ \| |/ _` |/ _ \ '__| |  __/ _` / __/ __|
+// | |  | | | || (_| | | | | | | (_| | | | | | (_) | | (_| |  __/ |    | | | (_| \__ \__ \
+// \_|  |_/_|\__\__,_|_| |_| |_|\__,_| \_| |_/\___/|_|\__,_|\___|_|    \_|  \__,_|___/___/                 
 //                                                                            
-//////////////////////////////////
-
-// HolderPass is ERC1155.
+//////////////////////////////////////////////////////////////////////////////////////////
 
 import { ERC165, IERC165, ERC165Storage }  from "@solidstate/contracts/introspection/ERC165.sol";
 import { IERC1155 } from "@solidstate/contracts/interfaces/IERC1155.sol";
@@ -51,12 +48,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             true
         );
 
-<<<<<<< HEAD
         baseURI = _baseURI;
-=======
-        ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
-        l.baseURI = _baseURI;
->>>>>>> 1c1a329db5ad66563c769b917e874c3ded92a42b
         name = _name;
         symbol = _symbol;
         _grantRole(MINTER_ROLE, msg.sender);
