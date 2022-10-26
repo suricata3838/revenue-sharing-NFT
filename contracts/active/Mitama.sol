@@ -31,9 +31,9 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
      */
     uint256 public DA_STARTING_PRICE = 0.6 ether;
     uint256 public DA_ENDING_PRICE = 0.1 ether;
-    // Decrement 0.05 ether every 3 hours ~= 0.00005 ether every 10 sec.
+    // Decrement 0.05 ether every 3 hours ~= 0.00005 ether every 5 sec.
     uint256 public DA_DECREMENT = 0.00005 ether;
-    uint256 public DA_DECREMENT_FREQUENCY = 10;
+    uint256 public DA_DECREMENT_FREQUENCY = 5;
     // Mint starts: Sunday, October 30, 2022 9:00:00 PM GMT+09:00: 1667131200
     uint256 public DA_STARTING_TIMESTAMP = 1667131200;
     uint256 public DA_QUANTITY = TOKEN_QUANTITY - 1000 - FREE_MINT_QUANTITY;// 8580
@@ -92,9 +92,8 @@ contract DAWLNFT is ERC721A, Ownable, MerkleWhitelist{
      */
 
     constructor(
-        string memory _baseURI, string memory _unrevealedURI
-    ) ERC721A ('DAERC721', 'DA') {
-        setBaseURI(_baseURI);
+        string memory _unrevealedURI
+    ) ERC721A ('Mitama', 'MTM') {
         setRevealData(false, _unrevealedURI);
     }
     

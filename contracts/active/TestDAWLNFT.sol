@@ -92,9 +92,8 @@ contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
      */
 
     constructor(
-        string memory _baseURI, string memory _unrevealedURI
+        string memory _unrevealedURI
     ) ERC721A ('DAERC721', 'DA') {
-        setBaseURI(_baseURI);
         setRevealData(false, _unrevealedURI);
     }
     

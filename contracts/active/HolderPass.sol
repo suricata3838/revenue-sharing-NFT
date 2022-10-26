@@ -17,9 +17,9 @@ pragma solidity ^0.8.9;
 import { ERC165, IERC165, ERC165Storage }  from "@solidstate/contracts/introspection/ERC165.sol";
 import { IERC1155 } from "@solidstate/contracts/interfaces/IERC1155.sol";
 import { AccessControl } from "@solidstate/contracts/access/access_control/AccessControl.sol";
-import { AccessControlStorage } from "@solidstate/contracts/access/access_control/AccessControlStorage.sol";
 import { EnumerableSet } from "@solidstate/contracts/utils/EnumerableSet.sol";
 import { ERC1155MetadataStorage } from "@solidstate/contracts/token/ERC1155/metadata/ERC1155MetadataStorage.sol";
+import { ERC1155Metadata, IERC1155Metadata } from "@solidstate/contracts/token/ERC1155/metadata/ERC1155Metadata.sol";
 import { ERC1155EnumerableStorage } from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
 import "@solidstate/contracts/token/ERC1155/SolidStateERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -32,14 +32,15 @@ contract HolderPass is SolidStateERC1155, AccessControl {
     // Token informations
     string public name;
     string public symbol;
-    uint256 public MAX_TOKEN = 3;
+    string public baseURI;
+    uint256 public MAX_NUMBER = 6;
     mapping(uint256 => address[]) public indexedAccounts;
     bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     constructor(
         string memory _name,
         string memory _symbol,
-        string memory _bsaeURI
+        string memory _baseURI
     ) {
         ERC165Storage.layout().setSupportedInterface(
             type(IERC165).interfaceId,
@@ -50,59 +51,54 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             true
         );
 
-        ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
-        l.baseURI = _bsaeURI;
+        baseURI = _baseURI;
         name = _name;
         symbol = _symbol;
         _grantRole(MINTER_ROLE, msg.sender);
     }
 
-    /**
-     * @notice mint new 1 token by tokenId, the amount is up to MAX_TOKEN.
-     * @param account: account to mint a token, uint256: tokenid
-     */
     function mintPass(
         address account,
         uint256 id
     ) external onlyRole(MINTER_ROLE)  {
-        if(totalSupply(id) >= MAX_TOKEN) {
-            address secondPassHolder = indexedAccounts[id][1];
-            _burn(secondPassHolder, id, 1); 
+        if(totalSupply(id + 10000) == 0) {
+            // Gold Pass
+            _mint(account, id + 10000, 1, '');           
+        } else if(totalSupply(id) >= MAX_NUMBER) {
+            // Silver Pass is up to 6.
+            address firstPassHolder = indexedAccounts[id][0];
+            _burn(firstPassHolder, id, 1);
+            _mint(account, id, 1, '');
+        } else {
+           // Silver Pass
+            _mint(account, id, 1, '');           
         }
-        _mint(account, id, 1, '');
     }
-    
+
+    // function setBaseURI(string calldata _uri) external onlyRole(MINTER_ROLE) {
+    //     ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
+    //     l.baseURI = _uri;
+    // }
+
     /**
-     * @notice get indexed_accounts_list who owns token id
-     * @param id: token id
-     * @return indexed_accounts_list
+     * @notice inheritdoc IERC1155Metadata
      */
-    function indexedAccountsByToken(uint256 id)
-        external
-        view
-        returns (address[] memory)   
-    {
-        address[] storage accounts = indexedAccounts[id];
-        return accounts;
-    }
-    
-    function accountByIndex(uint256 id, uint256 index)
-        external
-        view
-        returns (address)   
-    {
-        return _accountByIndex(id, index);
+    function uri(uint256 tokenId) override(ERC1155Metadata, IERC1155Metadata) public view returns (string memory) {
+        string memory baseURI_gold = string(abi.encodePacked(baseURI, "gold"));
+        string memory baseURI_silver = string(abi.encodePacked(baseURI, "silver"));
+
+        if (tokenId > 10000) {
+            return baseURI_gold;
+        } else {
+            return baseURI_silver;
+        }
     }
 
-    function indexOfIndexedAccounts(uint256 id, address addr)
-        external
-        view
-        returns (uint256)
-    {
-        address[] memory accounts = indexedAccounts[id];
-        return _indexOf(accounts, addr);
-    }
-
+    /**
+     * @notice query idx of account who owns token id
+     * @param id: token id, addr: address
+     * @return index of Account
+     */
     function indexOfAddr(uint256 id, address addr)
         external
         view
@@ -117,6 +113,51 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         // value => index
         require(accounts.contains(addr), "Invalid Index");
         return accounts.indexOf(addr);
+    }
+
+    function indexOfIndexedAccounts(uint256 id, address addr)
+        external
+        view
+        returns (uint256)
+    {
+        address[] memory accounts = indexedAccounts[id];
+        return _indexOf(accounts, addr);
+    }
+
+    function accountByIndex(uint256 id, uint256 index)
+        external
+        view
+        returns (address)   
+    {
+        return _accountByIndex(id, index);
+    }
+    
+    function indexedAccountsByToken(uint256 id)
+        external
+        view
+        returns (address[] memory)   
+    {
+        address[] storage accounts = indexedAccounts[id];
+        return accounts;
+    }
+
+    /**
+     * @notice query idx of account who owns token id
+     * @param id: token id, addr: address
+     * @return index of Account
+     */
+    function _accountByIndex(uint256 id, uint256 index)
+        internal
+        view
+        returns (address)
+    {
+        EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
+            .layout()
+            .accountsByToken[id];
+
+        // value => index
+        require(accounts.length() > index, "Invalid index");
+        return accounts.at(index);
     }
 
     /**
@@ -162,9 +203,9 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         }
     }
 
-    /**
-     *  Internal functions
-     */
+    /////
+    // Internal functions
+    /////
     function _indexOf(address[] memory arr, address addr)
         internal
         pure
@@ -177,7 +218,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         }
         revert("Index doesn't exist");
     }
-    
+
     function _removeAccounts(uint256 id, uint256 index) internal {
         address[] storage accounts = indexedAccounts[id];
         if (index >= accounts.length) return;
@@ -186,37 +227,6 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             accounts[i] = accounts[i+1];
         }
         accounts.pop();
-    }
-    
-    /**
-     * @notice query idx of account who owns token id
-     * @param id: token id, addr: address
-     * @return index of Account
-     */
-    function _accountByIndex(uint256 id, uint256 index)
-        internal
-        view
-        returns (address)
-    {
-        EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
-            .layout()
-            .accountsByToken[id];
-
-        // value => index
-        require(accounts.length() > index, "Invalid index");
-        return accounts.at(index);
-    }
-
-    /**
-     * House keeping
-     */
-    function setBaseURI(string calldata _uri) external onlyRole(MINTER_ROLE) {
-        ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
-        l.baseURI = _uri;
-    }
-
-    function setMaxToken(uint256 n) external onlyRole(AccessControlStorage.DEFAULT_ADMIN_ROLE) {
-        MAX_TOKEN = n;
     }
 
 }
