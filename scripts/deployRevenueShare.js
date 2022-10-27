@@ -23,12 +23,17 @@ async function deployRevenueShare() {
 async function deployRevenueShareForDonation() {
   const [deployer] = await ethers.getSigners(network.config.accounts);
   const RevenueShareForDonation = await ethers.getContractFactory("RevenueShareForDonation");
-  const revenueShareForDonation = await RevenueShareForDonation.connect(deployer).deploy(materialIdList);
-  console.log(materialIdList.length)
-  console.log(revenueShareForDonation)
+  const revenueShareForDonation = await RevenueShareForDonation.connect(deployer).deploy();
+  console.log('run')
   await revenueShareForDonation.deployed();
 
   console.log("revenueShareForDonation deployed to:", revenueShareForDonation.address, "from ", deployer.address);
+  for (let i = 0; i < 18; i++) {
+    setTimeout(async () => {
+      await revenueShareForDonation.setTokenToMaterial(materialIdList.slice(i * 500, (i + 1) * 500), 0, 500);
+      console.log('done: ', i++)
+    }, i * 1000)
+  }
 }
 
 async function main() {
