@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 const name = "MitamaHolderPass"
 const symbol = "MHP"
-const uri = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/pass_meta/"
+const uri = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/ipfs/holderPass_metadata/"
 // `baseURI` + gold = metadata of the gold pass
 // `baseURI` + silver = metadata of the silver pass
 
@@ -11,9 +11,10 @@ const arguments = [
     symbol,
     uri
 ]
-module.exports = {
-    arguments
-}
+console.log(arguments);
+module.exports = [
+    ...arguments
+]
 
 async function deployHolderPass () {
     const [deployer] = await hre.ethers.getSigners();
@@ -32,10 +33,10 @@ const main = async () => {
     }
 }
 
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+// main().catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+//   });
 
 /*
  * Recent contract address on Goerli

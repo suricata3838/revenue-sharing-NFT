@@ -9,7 +9,6 @@ async function deployRevenueShare() {
 
     console.log("revenueShare deployed to:", revenueShare.address, "from ", deployer.address);
 }
-console.log("materialIdList:", materialIdList);
 /**
  * material type to order convertion:
  */
@@ -24,15 +23,22 @@ console.log("materialIdList:", materialIdList);
 async function deployRevenueShareForDonation() {
   const [deployer] = await ethers.getSigners(network.config.accounts);
   const RevenueShareForDonation = await ethers.getContractFactory("RevenueShareForDonation");
-  const revenueShareForDonation = await RevenueShareForDonation.connect(deployer).deploy(materialIdList, donationList);
+  const revenueShareForDonation = await RevenueShareForDonation.connect(deployer).deploy(materialIdList);
+  console.log(materialIdList.length)
+  console.log(revenueShareForDonation)
   await revenueShareForDonation.deployed();
 
   console.log("revenueShareForDonation deployed to:", revenueShareForDonation.address, "from ", deployer.address);
 }
 
 async function main() {
+  try {
   // await deployRevenueShare();
-  // await deployRevenueShareForDonation();
+  await deployRevenueShareForDonation();
+  } catch(e) {
+    console.error(e)
+  }
+
 }
 
 main().catch((error) => {
@@ -40,9 +46,7 @@ main().catch((error) => {
     process.exitCode = 1;
   });
 
-module.exports = [
-  materialIdList
-]
+module.exports = materialIdList
 
 /*
  * Recent contract address on Goerli
