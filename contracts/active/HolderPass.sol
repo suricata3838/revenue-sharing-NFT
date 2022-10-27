@@ -25,13 +25,19 @@ contract HolderPass is SolidStateERC1155, AccessControl {
     using EnumerableSet for EnumerableSet.AddressSet;
 
 
-    // Token informations
+    /**
+     * Token Configuration
+     */
     string public name;
     string public symbol;
     string public baseURI;
     uint256 public MAX_NUMBER = 6;
     mapping(uint256 => address[]) public indexedAccounts;
     bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
+    /* Custom error */
+    error InvalidIndex();
+
 
     constructor(
         string memory _name,
@@ -100,9 +106,8 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             .layout()
             .accountsByToken[id];
 
-        // checker: contains 
-        // value => index
-        require(accounts.contains(addr), "Invalid Index");
+        // checker: if the addr contains?
+        if(!accounts.contains(addr)) revert InvalidIndex();
         return accounts.indexOf(addr);
     }
 
@@ -147,7 +152,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             .accountsByToken[id];
 
         // value => index
-        require(accounts.length() > index, "Invalid index");
+        if(accounts.length() <= index) revert InvalidIndex();
         return accounts.at(index);
     }
 
@@ -193,10 +198,10 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             }
         }
     }
-
-    /////
-    // Internal functions
-    /////
+    
+    /**
+     * Internal functions
+     */
     function _indexOf(address[] memory arr, address addr)
         internal
         pure

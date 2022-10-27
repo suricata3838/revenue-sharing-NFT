@@ -1,28 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// ___  ___ _  _                            ______                                       _____  _                       
-// |  \/  |(_)| |                           | ___ \                                     /  ___|| |                      
-// | .  . | _ | |_  __ _  _ __ ___    __ _  | |_/ / ___ __   __ ___  _ __   _   _   ___ \ `--. | |__    __ _  _ __  ___ 
-// | |\/| || || __|/ _` || '_ ` _ \  / _` | |    / / _ \\ \ / // _ \| '_ \ | | | | / _ \ `--. \| '_ \  / _` || '__|/ _ \
-// | |  | || || |_| (_| || | | | | || (_| | | |\ \|  __/ \ V /|  __/| | | || |_| ||  __//\__/ /| | | || (_| || |  |  __/
-// \_|  |_/|_| \__|\__,_||_| |_| |_| \__,_| \_| \_|\___|  \_/  \___||_| |_| \__,_| \___|\____/ |_| |_| \__,_||_|   \___|                                                                                                                                               
-//                                                                                                                      
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/**
+ * 
+ *  ___  ___ _  _                            ______                                       _____  _                       
+ *  |  \/  |(_)| |                           | ___ \                                     /  ___|| |                      
+ *  | .  . | _ | |_  __ _  _ __ ___    __ _  | |_/ / ___ __   __ ___  _ __   _   _   ___ \ `--. | |__    __ _  _ __  ___ 
+ *  | |\/| || || __|/ _` || '_ ` _ \  / _` | |    / / _ \\ \ / // _ \| '_ \ | | | | / _ \ `--. \| '_ \  / _` || '__|/ _ \
+ *  | |  | || || |_| (_| || | | | | || (_| | | |\ \|  __/ \ V /|  __/| | | || |_| ||  __//\__/ /| | | || (_| || |  |  __/
+ *  \_|  |_/|_| \__|\__,_||_| |_| |_| \__,_| \_| \_|\___|  \_/  \___||_| |_| \__,_| \___|\____/ |_| |_| \__,_||_|   \___| 
+ * 
+ * produced by http://mitama-mint.com/
+ * written by zkitty.eth
+ */
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract RevenueShare is AccessControl{
+contract RevenueShare is AccessControl, ReentrancyGuard{
   using SafeMath for uint256;
   uint256 public receiveId;
   uint256 public requestId;
   uint256 public withdrawnId;
   address public WETH;
 
-
+  /**
+   * Request and Receive management 
+   */
   uint public totalReceivedETH;
   uint public totalReceivedWETH;
   uint256 public ETHbal;
@@ -59,6 +64,9 @@ contract RevenueShare is AccessControl{
       _grantRole(WITHDRAWER_ROLE, msg.sender);
   }
 
+  /**
+   * Event
+   */
   event ReceivedETH(uint256 receivedId, uint256 amount);
   event ReceivedWETH(uint256 receivedId, uint256 amount);
   event RequestAdded(uint tokenId, uint256 amount, address[] m);
@@ -67,21 +75,24 @@ contract RevenueShare is AccessControl{
   event WithdrawerAdded(address withdrawer);
   event WithdrawerRemoved(address withdrawer);
 
+  error InvalidTokenAddress();
   function setWETH(address _addr) external onlyRole(DEFAULT_ADMIN_ROLE) {
-      require(_addr != address(0), "Invalid token address");
+      if(_addr == address(0)) revert InvalidTokenAddress();
       WETH = _addr;
   }
 
+  error ZeroAmountRequest();
+  error DivisionFailure(uint256 numerator, uint256 demoninator);
   function addRequest(uint tokenId, address[] memory m) external onlyRole(DEFAULT_ADMIN_ROLE) {
     _updateReceivedWETH();
     ++requestId;
     Payment memory payment = receiveIdToPayments[requestId];
-    require(payment.amount > 0, "request amount should be > 0");
+    if(payment.amount == 0) revert ZeroAmountRequest();
     //amount is given by receivedIdToPayments
     Request memory request =  Request(tokenId, payment.amount, m);
     requestIdToRequest[requestId] = request;
     (bool res, uint256 revenuePerMember) = payment.amount.tryDiv(m.length);
-    require(res, "Failed to devide receive amount");
+    if(!res) revert DivisionFailure(payment.amount, m.length);
     for(uint i=0; i<m.length; i++) {
       if (payment.isWETH) {
         claimablePerAddress[m[i]].amountWETH += revenuePerMember;
@@ -104,8 +115,9 @@ contract RevenueShare is AccessControl{
   }
 
   // update receivedWETH
+  error failedSetWETH();
   function _updateReceivedWETH() internal {
-    require(WETH != address(0), "failed setWETH()");
+    if(WETH == address(0)) revert failedSetWETH();
     uint256 bal = IERC20(WETH).balanceOf(address(this));
     if(bal == 0){
       WETHbal == 0;
@@ -125,8 +137,9 @@ contract RevenueShare is AccessControl{
       return WETHbal;
   }
 
-  function batchWithdraw() external onlyRole(WITHDRAWER_ROLE) payable {
-    require(withdrawnId < requestId, "No Withdrawable Request");
+  error NoWithdrawableRequest();
+  function batchWithdraw() external onlyRole(WITHDRAWER_ROLE) payable nonReentrant{
+    if(withdrawnId >= requestId) revert NoWithdrawableRequest();
     // transfer claimablePerAddress to all addresses if the amount is not zero.
     // to get the wallet list: requestIdToRequest[requestId(itterable)].members
     for(uint i=withdrawnId; i<=requestId; i++) {
@@ -154,9 +167,14 @@ contract RevenueShare is AccessControl{
     withdrawnId = requestId;
   }
 
-  function withdrawETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable {
-    require(claimablePerAddress[account].amountETH > 0, "Account has no claimable amount.");
-    require(claimablePerAddress[account].amountETH > amount, "Amount exceeds claimable amount.");
+  error AcountHasNoClaimableAmount(address account);
+  error ExceedsClaimableAmount(uint256 actual, uint256 expect);
+
+  function withdrawETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable nonReentrant{
+    if(claimablePerAddress[account].amountETH == 0) revert AcountHasNoClaimableAmount(account);
+    if(claimablePerAddress[account].amountETH <= amount)
+      revert ExceedsClaimableAmount(amount, claimablePerAddress[account].amountETH);
+
     claimablePerAddress[account].amountETH -= amount;
     withdrawnPerAddress[account].amountETH += amount;
     _transfer(account, amount);
@@ -164,9 +182,11 @@ contract RevenueShare is AccessControl{
     emit WithdrawedETH(account, amount);
   }
 
-  function withdrawWETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable {
-    require(claimablePerAddress[account].amountWETH > 0, "Account has no claimable amount.");
-    require(claimablePerAddress[account].amountWETH > amount, "Amount exceeds claimable amount.");
+  function withdrawWETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable nonReentrant{
+    if(claimablePerAddress[account].amountWETH == 0) revert AcountHasNoClaimableAmount(account);
+    if(claimablePerAddress[account].amountWETH <= amount)
+      revert ExceedsClaimableAmount(amount, claimablePerAddress[account].amountWETH);
+
     claimablePerAddress[account].amountWETH -= amount;
     totalReceivedWETH -= amount;
     withdrawnPerAddress[account].amountWETH += amount;
@@ -178,10 +198,12 @@ contract RevenueShare is AccessControl{
   ////
   // add and remove Withdrawer
   ////
+  /**
+   */
 
   function addProvider(address withdrawer) external onlyRole(DEFAULT_ADMIN_ROLE) {
       // withdrawer should not have WITHDRAWER_ROLE already.
-      require(!hasRole(WITHDRAWER_ROLE, withdrawer), "Withdrawer already added.");
+      if(hasRole(WITHDRAWER_ROLE, withdrawer)) revert("Withdrawer already added.");
 
       _grantRole(WITHDRAWER_ROLE, withdrawer);
       numWithdrawer++;
@@ -191,7 +213,7 @@ contract RevenueShare is AccessControl{
 
   function removeProvider(address withdrawer) external onlyRole(DEFAULT_ADMIN_ROLE) {
       // withdrawer should have WITHDRAWER_ROLE.
-      require(hasRole(WITHDRAWER_ROLE, withdrawer), "Withdrawer doesn't exist.");
+      if(!hasRole(WITHDRAWER_ROLE, withdrawer)) revert("Withdrawer doesn't exist.");
 
       _revokeRole(WITHDRAWER_ROLE, withdrawer);
       numWithdrawer--;

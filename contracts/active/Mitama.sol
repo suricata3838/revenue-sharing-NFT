@@ -18,10 +18,11 @@ import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MerkleWhitelist.sol";
 import "./DAHelper.sol";
 
-contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist{
+contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist, ReentrancyGuard{
     using Strings for uint256;
     using Strings for uint8;
 
@@ -209,7 +210,7 @@ contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist{
      * Refund and Withdraw
      */
 
-    function withdrawInitialFunds() public onlyOwner {
+    function withdrawInitialFunds() public onlyOwner nonReentrant{
         //Should be invoked only one time. 
         if(INITIAL_FUNDS_WITHDRAWN)revert("Already invoked.");
         if(DA_FINAL_PRICE == 0) revert DAMustBeOver();
@@ -230,7 +231,7 @@ contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist{
         if(!succ) revert TransferFailed();
     }
 
-    function withdrawFinalFunds() public onlyOwner {
+    function withdrawFinalFunds() public onlyOwner nonReentrant{
         //Should 1 weeks after DA Starts.
         if(block.timestamp < DA_STARTING_TIMESTAMP + WAITING_FINAL_WITHDRAW)
             revert InvalidTiming();
@@ -244,7 +245,7 @@ contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist{
     }
 
     /* Refund by owner */
-    function refundExtraETH() public {
+    function refundExtraETH() public nonReentrant{
         if(DA_FINAL_PRICE == 0) revert DAMustBeOver();
 
         uint256 publicRefund = DAHelper._getRefund(msg.sender, userToTokenBatchPrices, 0, DA_FINAL_PRICE);

@@ -14,17 +14,17 @@ pragma solidity ^0.8.9;
 // MitamaTest is ERC721 which accepts Dutch Auction as the minting approach.
 
 
-import "erc721a-upgradeable/contracts/ERC721AUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import "erc721a/contracts/ERC721A.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./MerkleWhitelist.sol";
 import "hardhat/console.sol";
 
-contract TestDAWLNFT is ERC721AUpgradeable, OwnableUpgradeable, MerkleWhitelist {
-    using SafeMathUpgradeable for uint256;
-    using StringsUpgradeable for uint256;
-    using StringsUpgradeable for uint8;
+contract TestDAWLNFT is ERC721A, Ownable, MerkleWhitelist{
+    using SafeMath for uint256;
+    using Strings for uint256;
+    using Strings for uint8;
 
     /**
      * Mitama Dutch Auction configration: configured by the team at deployment.
@@ -90,21 +90,13 @@ contract TestDAWLNFT is ERC721AUpgradeable, OwnableUpgradeable, MerkleWhitelist 
     /**
      * Initializate contract
      */
-<<<<<<< HEAD:contracts/active/_TestDAWLNFT.sol
 
     constructor(
         string memory _unrevealedURI
     ) ERC721A ('DAERC721', 'DA') {
         setRevealData(false, _unrevealedURI);
-=======
-    function __TestDAWLNFT_init(string memory _baseURI, string memory _unrevealedURI) public initializerERC721A initializer {
-      __Ownable_init();
-      __ERC721A_init('DAERC721', 'DA');
-      setBaseURI(_baseURI);
-      setRevealData(false, _unrevealedURI);
->>>>>>> c130366021c40e7e0996be53956473bbf510ebb1:contracts/active/TestDAWLNFT.sol
     }
-
+    
     /**
      * Mint
      */
