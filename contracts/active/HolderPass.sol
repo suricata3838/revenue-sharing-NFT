@@ -16,7 +16,6 @@ import { IERC1155 } from "@solidstate/contracts/interfaces/IERC1155.sol";
 import { AccessControl } from "@solidstate/contracts/access/access_control/AccessControl.sol";
 import { EnumerableSet } from "@solidstate/contracts/utils/EnumerableSet.sol";
 import { ERC1155MetadataStorage } from "@solidstate/contracts/token/ERC1155/metadata/ERC1155MetadataStorage.sol";
-import { ERC1155Metadata, IERC1155Metadata } from "@solidstate/contracts/token/ERC1155/metadata/ERC1155Metadata.sol";
 import { ERC1155EnumerableStorage } from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
 import "@solidstate/contracts/token/ERC1155/SolidStateERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -72,15 +71,10 @@ contract HolderPass is SolidStateERC1155, AccessControl {
         }
     }
 
-    // function setBaseURI(string calldata _uri) external onlyRole(MINTER_ROLE) {
-    //     ERC1155MetadataStorage.Layout storage l = ERC1155MetadataStorage.layout();
-    //     l.baseURI = _uri;
-    // }
-
     /**
      * @notice inheritdoc IERC1155Metadata
      */
-    function uri(uint256 tokenId) override(ERC1155Metadata, IERC1155Metadata) public view returns (string memory) {
+    function uri(uint256 tokenId) override public view returns (string memory) {
         string memory baseURI_gold = string(abi.encodePacked(baseURI, "gold"));
         string memory baseURI_silver = string(abi.encodePacked(baseURI, "silver"));
 

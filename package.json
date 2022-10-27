@@ -21,6 +21,8 @@
     "erc721a": "^4.2.2",
     "ethers": "^5.7.0",
     "hardhat": "^2.10.1",
+    "hardhat-contract-sizer": "^2.6.1",
+    "hardhat-gas-reporter": "^1.0.9",
     "merkletreejs": "^0.2.32"
   },
   "dependencies": {
