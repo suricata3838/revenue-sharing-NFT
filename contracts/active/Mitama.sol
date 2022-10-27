@@ -1,75 +1,42 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-///////////////////////////////////////////////
-// ___  ___ _____  _____   ___  ___  ___  ___  
-// |  \/  ||_   _||_   _| / _ \ |  \/  | / _ \ 
-// | .  . |  | |    | |  / /_\ \| .  . |/ /_\ \
-// | |\/| |  | |    | |  |  _  || |\/| ||  _  |
-// | |  | | _| |_   | |  | | | || |  | || | | |
-// \_|  |_/ \___/   \_/  \_| |_/\_|  |_/\_| |_/
-// 
-///////////////////////////////////////////////
+/**
+ *  ___  ___ _____  _____   ___  ___  ___  ___  
+ *  |  \/  ||_   _||_   _| / _ \ |  \/  | / _ \ 
+ *  | .  . |  | |    | |  / /_\ \| .  . |/ /_\ \
+ *  | |\/| |  | |    | |  |  _  || |\/| ||  _  |
+ *  | |  | | _| |_   | |  | | | || |  | || | | |
+ *  \_|  |_/ \___/   \_/  \_| |_/\_|  |_/\_| |_/
+ * 
+ * produced by http://mitama-mint.com/
+ * inspired by Kiwami.sol
+ * written by zkitty.eth
+ */
 
 import "erc721a/contracts/ERC721A.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./MerkleWhitelist.sol";
+import "./DAHelper.sol";
 
-struct TokenBatchPrice {
-    uint128 pricePaid;
-    uint8 quantityMinted;
-}
-
-library DA {
-    function _getRefund(
-        address user,
-        mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices,
-        uint256 _DISCOUNT_PERCENT,
-        uint256 _DA_FINAL_PRICE
-    ) internal returns (uint256) {
-        TokenBatchPrice[] storage tokenBatchPrices = _userToTokenBatchPrices[user];
-        uint256 totalRefund;
-        for (
-            uint256 i = tokenBatchPrices.length;
-            i > 0;
-            i--
-        ) {
-            //This is what they should have paid if they bought at lowest price tier.
-            uint256 expectedPrice = tokenBatchPrices[i - 1]
-                .quantityMinted * _DA_FINAL_PRICE * (100 - _DISCOUNT_PERCENT) / 100;
-
-            //What they paid - what they should have paid = refund.
-            uint256 refund = tokenBatchPrices[i - 1]
-                .pricePaid - expectedPrice;
-
-            //Remove this tokenBatch
-            tokenBatchPrices.pop();
-
-            //Send them their extra monies.
-            totalRefund += refund;
-        }
-        return totalRefund;
-    }
-}
-
-contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
+contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist{
     using Strings for uint256;
     using Strings for uint8;
 
     /**
      * Mitama Dutch Auction configration: configured by the team at deployment.
      */
-    uint256 public DA_STARTING_PRICE = 0.6 ether;
-    uint256 public DA_ENDING_PRICE = 0.1 ether;
-    // Decrement 0.05 ether every 1.5 hours ~= 0.00005 ether every 5 sec.
-    uint256 public DA_DECREMENT = 0.00005 ether;
+    uint256 public DA_STARTING_PRICE = 0.25 ether;
+    uint256 public DA_ENDING_PRICE = 0.07 ether;
+    // Decrement 0.015 ether every 1 hours ~= 0.00002 ether every 5 sec.
+    uint256 public DA_DECREMENT = 0.00002 ether;
     uint256 public DA_DECREMENT_FREQUENCY = 5;
     // Mint starts: Sunday, October 30, 2022 9:00:00 PM GMT+09:00: 1667131200
     uint256 public DA_STARTING_TIMESTAMP = 1667131200;
-    uint256 public DA_QUANTITY = TOKEN_QUANTITY - 1000 - FREE_MINT_QUANTITY;// 8580
-    // wait 1 week: 
+    uint256 public DA_QUANTITY = 8580;
+    // wait 1 week:
     uint256 public WAITING_FINAL_WITHDRAW = 60*60*24*7;
     // Withdraw address
     address public TEAM_WALLET = 0x7a1Bf181867703d6Fe21BaDf71e68D704751672A;
@@ -119,7 +86,20 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
      * ERC2981 Rolyalty Standard
      */ 
     address public receiver = TEAM_WALLET;
-    uint96 public feeNumerator = 33;
+    uint96 public feeNumerator = 330;
+
+    /**
+     * Custom error
+     */
+    error DAIsNotStarted();
+    error DAMustBeOver();
+    error InvalidTiming();
+    error InsuficientFunds(uint256 actual, uint256 expect);
+    error ExceedsMaxMint();
+    error ExceedsMaxSupply();
+    error InvalidMintRequest();
+    error TransferFailed();
+    error InvalidTokenId();
 
     /**
      * Initializate contract
@@ -135,10 +115,7 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
      */
 
     function currentPrice() public view returns (uint256) {
-        require(
-            block.timestamp >= DA_STARTING_TIMESTAMP,
-            "DA has not started!"
-        );
+        if(block.timestamp < DA_STARTING_TIMESTAMP) revert DAIsNotStarted();
 
         if (DA_FINAL_PRICE > 0) return DA_FINAL_PRICE;
 
@@ -161,9 +138,10 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
     }
 
     function mintDAPublic (uint8 quantity) public payable {
-        require(
-            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_NORMAL_WL, userToTokenBatchPrices),
-            "Invalid mint request"
+        if(!canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, userToTokenBatchPrices))
+            revert InvalidMintRequest();
+        userToTokenBatchPrices[msg.sender].push(
+            TokenBatchPrice(uint128(msg.value), quantity)
         );
         PUBLIC_MINTED += quantity;
         //Mint the quantity
@@ -175,9 +153,10 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
         payable 
         onlyNormalWhitelist(merkleProof)
     {
-        require(
-            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_SPECIAL_WL, normalWLToTokenBatchPrices),
-            "Invalid mint request"
+        if(!canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_NORMAL_WL, normalWLToTokenBatchPrices))
+            revert InvalidMintRequest();
+        normalWLToTokenBatchPrices[msg.sender].push(
+            TokenBatchPrice(uint128(msg.value), quantity)
         );
         NORMAL_WL_MINTED += quantity;
         //Mint the quantity
@@ -191,9 +170,10 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
         payable 
         onlySpecialWhitelist(merkleProof)
     {
-        require(
-            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, specialWLToTokenBatchPrices),
-            "Invalid mint request"
+        if(!canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_SPECIAL_WL, specialWLToTokenBatchPrices))
+            revert InvalidMintRequest();
+        specialWLToTokenBatchPrices[msg.sender].push(
+            TokenBatchPrice(uint128(msg.value), quantity)
         );
         SPECIAL_WL_MINTED += quantity;
         //Mint the quantity
@@ -204,14 +184,11 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
         public
         onlyFreeMintWhitelist(proof)
     {
-        require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
-        require(
-            !userToHasMintedFreeMint[msg.sender],
-            "Can only mint one time!"
-        );
+        if(DA_FINAL_PRICE == 0) revert DAMustBeOver();
+        if(userToHasMintedFreeMint[msg.sender]) revert ExceedsMaxMint();
 
         //Require max supply just in case.
-        require(totalSupply() + 1 <= TOKEN_QUANTITY, "Exceeds max supply!");
+        if(totalSupply() + 1 > TOKEN_QUANTITY) revert ExceedsMaxSupply();
 
         userToHasMintedFreeMint[msg.sender] = true;
 
@@ -221,12 +198,9 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
     
     function teamMint(uint256 quantity, address user) public onlyOwner {
         //Max supply
-        require(
-            totalSupply() + quantity <= TOKEN_QUANTITY,
-            "Max supply of 10,000 total!"
-        );
+        if(totalSupply() + quantity > TOKEN_QUANTITY) revert ExceedsMaxSupply();
+        if(DA_FINAL_PRICE == 0) revert DAMustBeOver();
 
-        require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
         //Mint the quantity
         _safeMint(user, quantity);
     }
@@ -236,11 +210,9 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
      */
 
     function withdrawInitialFunds() public onlyOwner {
-        require(
-            !INITIAL_FUNDS_WITHDRAWN,
-            "Initial funds have already been withdrawn."
-        );
-        require(DA_FINAL_PRICE > 0, "DA has not finished!");
+        //Should be invoked only one time. 
+        if(INITIAL_FUNDS_WITHDRAWN)revert("Already invoked.");
+        if(DA_FINAL_PRICE == 0) revert DAMustBeOver();
 
         uint256 DAFunds = DA_QUANTITY * DA_FINAL_PRICE;
         uint256 normalWLRefund = NORMAL_WL_MINTED *
@@ -255,33 +227,32 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
         (bool succ, ) = payable(TEAM_WALLET).call{
             value: initialFunds
         }("");
-        require(succ, "transfer failed");
+        if(!succ) revert TransferFailed();
     }
 
     function withdrawFinalFunds() public onlyOwner {
-        //Require this is 1 weeks after DA Start.
-        require(
-            block.timestamp >= DA_STARTING_TIMESTAMP + WAITING_FINAL_WITHDRAW, 
-            "Until the time have passed since DA started."
-        );
+        //Should 1 weeks after DA Starts.
+        if(block.timestamp < DA_STARTING_TIMESTAMP + WAITING_FINAL_WITHDRAW)
+            revert InvalidTiming();
 
         uint256 finalFunds = address(this).balance;
 
         (bool succ, ) = payable(TEAM_WALLET).call{
             value: finalFunds
         }("");
-        require(succ, "transfer failed");
+        if(!succ) revert TransferFailed();
     }
 
     /* Refund by owner */
     function refundExtraETH() public {
-        require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
+        if(DA_FINAL_PRICE == 0) revert DAMustBeOver();
 
-        uint256 publicRefund = DA._getRefund(msg.sender, userToTokenBatchPrices, 0, DA_FINAL_PRICE);
-        uint256 normalWLRefund = DA._getRefund(msg.sender, normalWLToTokenBatchPrices, DISCOUNT_PERCENT_NORMAL_WL, DA_FINAL_PRICE);
-        uint256 specialWLRefund = DA._getRefund(msg.sender, specialWLToTokenBatchPrices, DISCOUNT_PERCENT_SPECIAL_WL, DA_FINAL_PRICE);
+        uint256 publicRefund = DAHelper._getRefund(msg.sender, userToTokenBatchPrices, 0, DA_FINAL_PRICE);
+        uint256 normalWLRefund = DAHelper._getRefund(msg.sender, normalWLToTokenBatchPrices, DISCOUNT_PERCENT_NORMAL_WL, DA_FINAL_PRICE);
+        uint256 specialWLRefund = DAHelper._getRefund(msg.sender, specialWLToTokenBatchPrices, DISCOUNT_PERCENT_SPECIAL_WL, DA_FINAL_PRICE);
         uint256 totalRefund = publicRefund + normalWLRefund + specialWLRefund;
-        require(address(this).balance > totalRefund, "Contract runs out of funds.");
+
+        if(totalRefund > address(this).balance) revert('Contract runs out of funds.');
         payable(msg.sender).transfer(totalRefund);
 
     }
@@ -291,8 +262,8 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
      * Update NFT's AuraLevel
      */
     function updateAuraLevel(uint256 tokenId, uint8 level) public onlyOwner {
-        require(_exists(tokenId), "tokenId doesn't exist.");
-        require(6 > level && level > auraLevel[tokenId], "Invalid level");
+        if(!_exists(tokenId)) revert InvalidTokenId();
+        if(6 > level || level < auraLevel[tokenId]) revert ('Invalid Aura Level.');
         auraLevel[tokenId] = level;
     }
 
@@ -307,48 +278,30 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
         uint256 _MAX_MINT,
         mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices
     ) internal returns (bool) {
-        //Require DA started
-        require(
-            block.timestamp >= DA_STARTING_TIMESTAMP,
-            "DA has not started!"
-        );
+        if(block.timestamp < DA_STARTING_TIMESTAMP) revert DAIsNotStarted();
 
-        if(_userToTokenBatchPrices[user].length > 0) {
-            require(
-                quantity > 0 && quantity + _userToTokenBatchPrices[user][0].quantityMinted <= _MAX_MINT,
-                "Quantity exceeds max mintable!"
-            );            
-        }else {
-            require(
-                quantity > 0 && quantity <= _MAX_MINT,
-                "Quantity exceeds max mintable!"
-            );              
+        if(_userToTokenBatchPrices[user].length > _MAX_MINT -1) {
+            revert ExceedsMaxMint();
+        } else if(_userToTokenBatchPrices[user].length > 0){
+            if(_userToTokenBatchPrices[user].length > _MAX_MINT)
+                revert ExceedsMaxMint();         
+        } else if(quantity > _MAX_MINT){
+            revert ExceedsMaxMint();
         }
 
         uint256 _currentPrice = currentPrice();
 
         //Require enough ETH
-        require(
-            amount >= quantity * _currentPrice,
-            "Insufficient amount to mint."
-        );
+        if(amount < quantity * _currentPrice) revert InsuficientFunds(amount, quantity * _currentPrice);
 
         //Max supply
-        require(
-            totalSupply() + quantity <= DA_QUANTITY,
-            "Max supply for DA reached!"
-        );
+        if(totalSupply() + quantity > DA_QUANTITY) revert ExceedsMaxSupply();
 
         //This is the final price
         if (totalSupply() + quantity == DA_QUANTITY) {
             DA_FINAL_PRICE = _currentPrice;
             emit DAisFinishedAtPrice(DA_FINAL_PRICE);
         }
-
-        _userToTokenBatchPrices[user].push(
-            TokenBatchPrice(uint128(amount), quantity)
-        );
-
         return true;
     }
     
@@ -371,7 +324,7 @@ contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
 
     /* ERC721 primitive */
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        require(_exists(tokenId), "Invalid tokenId");
+        if(!_exists(tokenId)) revert InvalidTokenId();
         uint8 auraLevel_ = auraLevel[tokenId];
         if (REVEALED){
             return bytes(baseURI).length > 0 
