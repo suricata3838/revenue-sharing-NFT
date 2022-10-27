@@ -20,7 +20,6 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "hardhat/console.sol";
 
 contract RevenueShareForDonation is AccessControl{
   using SafeMath for uint256;
@@ -52,17 +51,15 @@ contract RevenueShareForDonation is AccessControl{
       uint256 amount;
   }
   uint256 numWithdrawer;
+  uint256 tokenToMaterialCount;
   bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
 
   mapping(uint256 => uint256) internal tokenToMaterial;
   mapping(uint256 => address) internal materialToDonation;
   
-  constructor(
-      uint256[9000] memory materialList
-  ) {
+  constructor() {
       _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
       _grantRole(WITHDRAWER_ROLE, msg.sender);
-      setTokenToMaterial(materialList);
   }
 
   event ReceivedETH(uint256 receivedId, uint256 amount);
@@ -91,11 +88,10 @@ contract RevenueShareForDonation is AccessControl{
     emit RequestAdded(tokenId, payment.amount, materialId);
   }
 
-  //receive ETH
+  // receive ETH
   receive() external payable {
     _updateReceivedWETH();
     ++receiveId;
-    console.log("receiveId:", receiveId);
     receiveIdToPayments[receiveId] = Payment(msg.value, false);
     totalReceivedETH += msg.value;
     emit ReceivedETH(receiveId, msg.value);
@@ -105,13 +101,10 @@ contract RevenueShareForDonation is AccessControl{
   function _updateReceivedWETH() internal {
     require(WETH != address(0), "failed setWET()");
     uint256 bal = IERC20(WETH).balanceOf(address(this));
-    console.log("bal:", bal);
-    console.log("WETHbal:", WETHbal);
     if(bal == 0){
       WETHbal == 0;
     } else if(bal > 0 && bal > WETHbal) {   
       uint256 diff = bal - WETHbal;
-      console.log("diff:", diff);
       ++receiveId;
       receiveIdToPayments[receiveId] = Payment(diff, true);
       totalReceivedWETH += diff;
@@ -122,7 +115,6 @@ contract RevenueShareForDonation is AccessControl{
 
   // onEvent: WETH is transfered to this contract
   function getWETHbal() public returns(uint256){
-      console.log("hit");
       _updateReceivedWETH();
       return WETHbal;
   }
@@ -232,10 +224,11 @@ contract RevenueShareForDonation is AccessControl{
       WETH = _addr;
   }
 
-  function setTokenToMaterial(uint256[9000] memory materialList) public onlyRole(DEFAULT_ADMIN_ROLE){
-    require(materialList.length == 9000, "Invalid materialList");
-    for(uint256 i; i < materialList.length; i++){
+  function setTokenToMaterial(uint256[500] memory materialList, uint256 start, uint256 end) public onlyRole(DEFAULT_ADMIN_ROLE){
+    require(materialList.length == 500, "Invalid materialList");
+    for(uint256 i = start; i < end; i++) {
       tokenToMaterial[i] = materialList[i];
+      tokenToMaterialCount++;
     }
   }
   
