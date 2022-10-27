@@ -12,15 +12,49 @@ pragma solidity ^0.8.9;
 ///////////////////////////////////////////////
 
 import "erc721a/contracts/ERC721A.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MerkleWhitelist.sol";
-import "hardhat/console.sol";
 
-contract Mitama is ERC721A, Ownable, MerkleWhitelist{
-    using SafeMath for uint256;
+struct TokenBatchPrice {
+    uint128 pricePaid;
+    uint8 quantityMinted;
+}
+
+library DA {
+    function _getRefund(
+        address user,
+        mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices,
+        uint256 _DISCOUNT_PERCENT,
+        uint256 _DA_FINAL_PRICE
+    ) internal returns (uint256) {
+        TokenBatchPrice[] storage tokenBatchPrices = _userToTokenBatchPrices[user];
+        uint256 totalRefund;
+        for (
+            uint256 i = tokenBatchPrices.length;
+            i > 0;
+            i--
+        ) {
+            //This is what they should have paid if they bought at lowest price tier.
+            uint256 expectedPrice = tokenBatchPrices[i - 1]
+                .quantityMinted * _DA_FINAL_PRICE * (100 - _DISCOUNT_PERCENT) / 100;
+
+            //What they paid - what they should have paid = refund.
+            uint256 refund = tokenBatchPrices[i - 1]
+                .pricePaid - expectedPrice;
+
+            //Remove this tokenBatch
+            tokenBatchPrices.pop();
+
+            //Send them their extra monies.
+            totalRefund += refund;
+        }
+        return totalRefund;
+    }
+}
+
+contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist{
     using Strings for uint256;
     using Strings for uint8;
 
@@ -38,14 +72,13 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
     // wait 1 week: 
     uint256 public WAITING_FINAL_WITHDRAW = 60*60*24*7;
     // Withdraw address
-    address public TEAM_WALLET = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
+    address public TEAM_WALLET = 0x7a1Bf181867703d6Fe21BaDf71e68D704751672A;
 
     /**
      * Mitama NFT configuration: configured by the team at deployment.
      */
     uint256 public TOKEN_QUANTITY = 10000;
     uint256 public FREE_MINT_QUANTITY = 420;
-    // TODO: update all MAX_MINTS
     uint256 public MAX_MINTS_PUBLIC = 1;
     uint256 public MAX_MINTS_NORMAL_WL = 2;
     uint256 public MAX_MINTS_SPECIAL_WL = 1;
@@ -57,6 +90,7 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
      */
     uint256 public DA_FINAL_PRICE;
     // How many each WL have been minted
+    uint16 public PUBLIC_MINTED;
     uint16 public NORMAL_WL_MINTED;
     uint16 public SPECIAL_WL_MINTED;
     // Withdraw status
@@ -65,10 +99,6 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
     // Event:
     event DAisFinishedAtPrice(uint256 finalPrice);
     //Struct for storing batch price data.
-    struct TokenBatchPrice {
-        uint128 pricePaid;
-        uint8 quantityMinted;
-    }
     //userAddress to token price data
     mapping(address => TokenBatchPrice[]) public userToTokenBatchPrices;
     mapping(address => TokenBatchPrice[]) public normalWLToTokenBatchPrices;
@@ -86,9 +116,14 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
     mapping(uint256 => uint8) public auraLevel;
 
     /**
+     * ERC2981 Rolyalty Standard
+     */ 
+    address public receiver = TEAM_WALLET;
+    uint96 public feeNumerator = 33;
+
+    /**
      * Initializate contract
      */
-
     constructor(
         string memory _unrevealedURI
     ) ERC721A ('Mitama', 'MTM') {
@@ -126,8 +161,11 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
     }
 
     function mintDAPublic (uint8 quantity) public payable {
-        bool res = canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_NORMAL_WL, userToTokenBatchPrices);
-        if(!res) console.log("Invalid mint request");
+        require(
+            canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_NORMAL_WL, userToTokenBatchPrices),
+            "Invalid mint request"
+        );
+        PUBLIC_MINTED += quantity;
         //Mint the quantity
         _safeMint(msg.sender, quantity);
     }
@@ -151,7 +189,7 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
     function mintSpecialWL(bytes32[] calldata merkleProof, uint8 quantity)
         public
         payable 
-        onlySpecialWhitelist(merkleProof) //TODO
+        onlySpecialWhitelist(merkleProof)
     {
         require(
             canMintDA(msg.sender, msg.value, quantity, MAX_MINTS_PUBLIC, specialWLToTokenBatchPrices),
@@ -164,7 +202,7 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
 
     function freeMint(bytes32[] memory proof)
         public
-        onlyFreeMintWhitelist(proof) //TODO
+        onlyFreeMintWhitelist(proof)
     {
         require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
         require(
@@ -181,7 +219,7 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
         _safeMint(msg.sender, 1);
     }
     
-    function teamMint(uint256 quantity, address receiver) public onlyOwner {
+    function teamMint(uint256 quantity, address user) public onlyOwner {
         //Max supply
         require(
             totalSupply() + quantity <= TOKEN_QUANTITY,
@@ -189,16 +227,15 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
         );
 
         require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
-
         //Mint the quantity
-        _safeMint(receiver, quantity);
+        _safeMint(user, quantity);
     }
 
     /**
      * Refund and Withdraw
      */
 
-    function withdrawInitialFunds() public onlyOwner nonReentrant {
+    function withdrawInitialFunds() public onlyOwner {
         require(
             !INITIAL_FUNDS_WITHDRAWN,
             "Initial funds have already been withdrawn."
@@ -212,7 +249,6 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
             ((DA_FINAL_PRICE / 100) * 20);
         
         uint256 initialFunds = DAFunds - normalWLRefund - specialWLRefund;
-        console.log("initialFunds:", initialFunds);
 
         INITIAL_FUNDS_WITHDRAWN = true;
 
@@ -222,7 +258,7 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
         require(succ, "transfer failed");
     }
 
-    function withdrawFinalFunds() public onlyOwner nonReentrant {
+    function withdrawFinalFunds() public onlyOwner {
         //Require this is 1 weeks after DA Start.
         require(
             block.timestamp >= DA_STARTING_TIMESTAMP + WAITING_FINAL_WITHDRAW, 
@@ -234,51 +270,20 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
         (bool succ, ) = payable(TEAM_WALLET).call{
             value: finalFunds
         }("");
-        console.log("finalFunds:", finalFunds);
         require(succ, "transfer failed");
     }
 
     /* Refund by owner */
-    function refundExtraETH() public nonReentrant {
+    function refundExtraETH() public {
         require(DA_FINAL_PRICE > 0, "Dutch action must be over!");
 
-        uint256 publicRefund = _getRefund(msg.sender, userToTokenBatchPrices, 0);
-        uint256 normalWLRefund = _getRefund(msg.sender, normalWLToTokenBatchPrices, DISCOUNT_PERCENT_NORMAL_WL);
-        uint256 specialWLRefund = _getRefund(msg.sender, specialWLToTokenBatchPrices, DISCOUNT_PERCENT_SPECIAL_WL);
+        uint256 publicRefund = DA._getRefund(msg.sender, userToTokenBatchPrices, 0, DA_FINAL_PRICE);
+        uint256 normalWLRefund = DA._getRefund(msg.sender, normalWLToTokenBatchPrices, DISCOUNT_PERCENT_NORMAL_WL, DA_FINAL_PRICE);
+        uint256 specialWLRefund = DA._getRefund(msg.sender, specialWLToTokenBatchPrices, DISCOUNT_PERCENT_SPECIAL_WL, DA_FINAL_PRICE);
         uint256 totalRefund = publicRefund + normalWLRefund + specialWLRefund;
-        console.log("totalRefund:", totalRefund);
         require(address(this).balance > totalRefund, "Contract runs out of funds.");
         payable(msg.sender).transfer(totalRefund);
 
-    }
-
-    function _getRefund(
-        address user,
-        mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices,
-        uint256 _DISCOUNT_PERCENT
-    ) internal returns (uint256) {
-        TokenBatchPrice[] storage tokenBatchPrices = _userToTokenBatchPrices[user];
-        uint256 totalRefund;
-        for (
-            uint256 i = tokenBatchPrices.length;
-            i > 0;
-            i--
-        ) {
-            //This is what they should have paid if they bought at lowest price tier.
-            uint256 expectedPrice = tokenBatchPrices[i - 1]
-                .quantityMinted * DA_FINAL_PRICE * (100 - _DISCOUNT_PERCENT) / 100;
-
-            //What they paid - what they should have paid = refund.
-            uint256 refund = tokenBatchPrices[i - 1]
-                .pricePaid - expectedPrice;
-
-            //Remove this tokenBatch
-            tokenBatchPrices.pop();
-
-            //Send them their extra monies.
-            totalRefund += refund;
-        }
-        return totalRefund;
     }
 
 
@@ -308,13 +313,17 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
             "DA has not started!"
         );
 
-        console.log("length:", _userToTokenBatchPrices[user].length);
-
-        //Require max is up to MAX_MINTS_PUBLIC
-        require(
-            quantity > 0 && quantity + _sumOfQuantityMinted(_userToTokenBatchPrices, user) <= _MAX_MINT,
-            "Quantity exceeds max mintable!"
-        );
+        if(_userToTokenBatchPrices[user].length > 0) {
+            require(
+                quantity > 0 && quantity + _userToTokenBatchPrices[user][0].quantityMinted <= _MAX_MINT,
+                "Quantity exceeds max mintable!"
+            );            
+        }else {
+            require(
+                quantity > 0 && quantity <= _MAX_MINT,
+                "Quantity exceeds max mintable!"
+            );              
+        }
 
         uint256 _currentPrice = currentPrice();
 
@@ -341,30 +350,6 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
         );
 
         return true;
-    }
-
-    function _sumOfQuantityMinted(
-        mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices,
-        address userAddr
-    ) internal view returns (uint256) {
-        TokenBatchPrice[] memory batchPriceList = _userToTokenBatchPrices[userAddr];
-        uint256 sumOfQuantityMinted;
-        if(batchPriceList.length == 0) return 0;
-        for(uint256 i=0; i < batchPriceList.length; i++){
-            sumOfQuantityMinted += batchPriceList[i].quantityMinted;
-        }
-        return sumOfQuantityMinted;
-    }
-
-    function _userToTokenBatchLength(
-        address user,
-        mapping(address => TokenBatchPrice[]) storage _userToTokenBatchPrices
-    )
-        internal
-        view
-        returns (uint256)
-    {
-        return _userToTokenBatchPrices[user].length;
     }
     
     /**
@@ -396,29 +381,18 @@ contract Mitama is ERC721A, Ownable, MerkleWhitelist{
             return UNREVEALED_URI;           
         }
     }
-
-    /* get the number of user who has minted*/
-    function userToTokenBatchLength(address user)
-        public
-        view
-        returns (uint256)
-    {
-        return _userToTokenBatchLength(user, userToTokenBatchPrices);
+    
+    /**
+    * inherited: ERC2981 Royalty Standard
+    */ 
+    function setDefaultRoyalty(address _receiver, uint96 _feeNumerator) public onlyOwner{
+        receiver = _receiver;
+        feeNumerator = _feeNumerator;
+        _setDefaultRoyalty(_receiver, _feeNumerator);
     }
 
-    function normalWLToTokenBatchLength(address user)
-        public
-        view
-        returns (uint256)
-    {
-        return _userToTokenBatchLength(user, normalWLToTokenBatchPrices);
-    }
-
-    function specialWLToTokenBatchLength(address user)
-        public
-        view
-        returns (uint256)
-    {
-        return _userToTokenBatchLength(user, specialWLToTokenBatchPrices);
+    //inherited: {IERC165-supportsInterface}.
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721A, ERC2981) returns (bool) {
+        return interfaceId == type(IERC2981).interfaceId || super.supportsInterface(interfaceId);
     }
 }

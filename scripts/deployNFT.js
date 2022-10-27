@@ -3,18 +3,17 @@ const { keccak256, toUtf8Bytes } = hre.ethers.utils;
 const { MerkleTree } = require('merkletreejs')
 
 const baseURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/Mitama_dir/";
-const unrevealedURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/Mitama_dir/unreleave";
+const test_unrevealedURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/ipfs/Mitama_dir/egg_meta";
+const unrevealedURI = "https://gateway.pinata.cloud/ipfs/QmYhT8vFpz4bq6QCaRDzei6w4X8AbwTrbutvxPJ3HexUeN"
 
-const arguments = [baseURI, unrevealedURI];
-module.exports = {
-    arguments
-}
+const arguments = test_unrevealedURI; //unrevealedURI;
+module.exports = arguments;
 
 async function deployMitama() {
     const [deployer] = await hre.ethers.getSigners();
-    const Mitama = await hre.ethers.getContractFactory("TestDAWLNFT");
-    const mitama = await Mitama.deploy(baseURI, unrevealedURI);
-    console.log("testDAWLNFT:", mitama.deployTransaction.hash);
+    const Mitama = await hre.ethers.getContractFactory("MitamaTest");
+    const mitama = await Mitama.deploy(test_unrevealedURI);
+    console.log("Mitama:", mitama.deployTransaction.hash);
     await mitama.deployed();
     console.log("Contract deployed to:", mitama.address, "from ", deployer.address);
 }
