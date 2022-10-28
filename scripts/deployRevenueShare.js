@@ -24,37 +24,46 @@ async function deployRevenueShareForDonation() {
   const [deployer] = await ethers.getSigners(network.config.accounts);
   const RevenueShareForDonation = await ethers.getContractFactory("RevenueShareForDonation");
   const revenueShareForDonation = await RevenueShareForDonation.connect(deployer).deploy();
-  console.log('run')
   await revenueShareForDonation.deployed();
-
   console.log("revenueShareForDonation deployed to:", revenueShareForDonation.address, "from ", deployer.address);
+}
+
+async function setTokenMaterial() {
+  const address = "";
+  const revenueShareForDonation = "";
   for (let i = 0; i < 18; i++) {
-    setTimeout(async () => {
-      await revenueShareForDonation.setTokenToMaterial(materialIdList.slice(i * 500, (i + 1) * 500), 0, 500);
-      console.log('done: ', i++)
-    }, i * 1000)
-  }
+    const tx = await revenueShareForDonation.setTokenToMaterial(materialIdList.slice(i * 500, (i + 1) * 500), i);
+    await tx.wait()
+    console.log(`done: ${i}: ${tx.hash}`)
+}  
 }
 
 async function main() {
   try {
   // await deployRevenueShare();
   await deployRevenueShareForDonation();
+  // await setTokenMaterial();
   } catch(e) {
     console.error(e)
   }
 
 }
 
-main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+// main().catch((error) => {
+//     console.error(error);
+//     process.exitCode = 1;
+//   });
 
-module.exports = materialIdList
-
+module.exports = [
+  materialIdList
+]
 /*
- * Recent contract address on Goerli
+ * Ehtereum mainnet
  **/
-// RevenueShare: 0xB595a5bF216b9E185037ABe884A8bBe48c78d478
-// RevenueShareForDonation: 0x14B71a54DF5007de2bEe3c16892D6da7f0D459B8
+// RevenueShare: https://etherscan.io/address/0x811BC1fFC4a198F90193D91729ca4ab90241E940#code
+// RevenueShareForDonation: https://etherscan.io/address/0x1CDE6E7f0BB09FFD40e366cAd206a663D81614b3#code
+
+/**
+ * Mumbai testnet
+ */
+// RevenueShareForDonation: https://mumbai.polygonscan.com/address/0x32A9b2c4Ef7ac84f39962834AB795dC2B181a21A#code

@@ -4,7 +4,7 @@ require('hardhat-contract-sizer');
 require("hardhat-gas-reporter");
 require("dotenv").config();
 const { 
-  ETH_APIKEY, 
+  ETH_APIKEY,
   ETH_API, 
   POLYGON_API, 
   MUMBAI_API, 
@@ -20,16 +20,13 @@ module.exports = {
   defaultNetwork: "goerli",
   networks: {
     hardhat: {
-      throwOnTransactionFailures: true,
-      throwOnCallFailures: true,
-      gas: 12000000,
-      blockGasLimit: 0x1fffffffffffff,
-      allowUnlimitedContractSize: true,
-      timeout: 1800000
+      forking: {
+        url: 'https://polygon-mumbai.infura.io/v3/b46167d4ce7e4190bff6c46f2eb6363d'
+      }
     },
     mainnet: {
       url: ETH_API,
-      accounts: [`0x${PRIVKEY}`]      
+      accounts: [`0x${PRIVKEY}`]   
     },
     goerli: {
       url: GOERLI_API,
@@ -42,7 +39,7 @@ module.exports = {
     polygonMumbai: {
       url: MUMBAI_API,
       accounts: [`0x${PRIVKEY}`]
-    },
+    }
   },
   solidity: "0.8.9",
   settings: {

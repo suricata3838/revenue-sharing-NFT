@@ -24,8 +24,9 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract RevenueShareForDonation is AccessControl{
+contract RevenueShareForDonation is AccessControl, ReentrancyGuard{
   using SafeMath for uint256;
   uint256 public receiveId;
   uint256 public requestId;
@@ -55,7 +56,7 @@ contract RevenueShareForDonation is AccessControl{
       uint256 amount;
   }
   uint256 numWithdrawer;
-  uint256 tokenToMaterialCount;
+  uint256 public tokenToMaterialCount;
   bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
 
   mapping(uint256 => uint256) internal tokenToMaterial;
@@ -123,7 +124,7 @@ contract RevenueShareForDonation is AccessControl{
       return WETHbal;
   }
 
-  function batchWithdraw() external onlyRole(WITHDRAWER_ROLE) payable {
+  function batchWithdraw() external onlyRole(WITHDRAWER_ROLE) payable nonReentrant{
     require(withdrawnId < requestId, "No Withdrawable Request");
     require(donations.length == 7, "7 Donation addresslits is not set.");
     // transfer claimablePerAddress to all addresses if the amount is not zero.
@@ -150,7 +151,7 @@ contract RevenueShareForDonation is AccessControl{
     withdrawnId = requestId;
   }
 
-  function withdrawETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable {
+  function withdrawETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable nonReentrant{
     require(getMaterialIdFromAddress(account) >= 0, "Invalid account;");
     uint256 materialId = getMaterialIdFromAddress(account);
     require(claimablePerMaterial[materialId].amountETH > 0, "Account has no claimable amount.");
@@ -162,7 +163,7 @@ contract RevenueShareForDonation is AccessControl{
     emit WithdrawedETH(account, amount);
   }
 
-  function withdrawWETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable {
+  function withdrawWETH(address account, uint amount) external onlyRole(WITHDRAWER_ROLE) payable nonReentrant{
     require(getMaterialIdFromAddress(account) != 0x0, "Invalid account;");
     uint256 materialId = getMaterialIdFromAddress(account);
     require(claimablePerMaterial[materialId].amountWETH > 0, "Account has no claimable amount.");
@@ -212,32 +213,35 @@ contract RevenueShareForDonation is AccessControl{
   /*
    * House Keepings
    */
-  function getMaterialIdFromAddress(address account) public view returns(uint256 materialId) {
+  function getMaterialIdFromAddress(address account) public view returns(uint256) {
       require(account != address(0), "Invalid Address.");
       require(donations.length > 0, "materialToDonation isn't set." );
-      for(uint256 i; i < donations.length; i++) {
+      uint256 materialId;
+      for(uint256 i; i < donations.length; i++){
         if(account == donations[i]) {
-          return i;
+          materialId = i;
         } else {
           revert("Address is not found.");
         }
       }
+      return materialId;
   } 
+
   function setWET(address _addr) external onlyRole(DEFAULT_ADMIN_ROLE) {
       require(_addr != address(0), "Invalid token address");
       WETH = _addr;
   }
 
-  function setTokenToMaterial(uint256[500] memory materialList, uint256 start, uint256 end) public onlyRole(DEFAULT_ADMIN_ROLE){
-    require(materialList.length == 500, "Invalid materialList");
-    for(uint256 i = start; i < end; i++) {
-      tokenToMaterial[i] = materialList[i];
+  function setTokenToMaterial(uint256[500] memory materialList, uint256 page) public onlyRole(DEFAULT_ADMIN_ROLE){
+    require(tokenToMaterialCount == page*500 , "Invalid starting index.");
+    for(uint256 i = 0; i < 500; i++) {
+      uint256 counter = page * 500 + i;
+      tokenToMaterial[counter] = materialList[i];
       tokenToMaterialCount++;
     }
   }
   
   function setMaterialToDonation(address[7] memory addresses) public onlyRole(DEFAULT_ADMIN_ROLE){
-    require(addresses.length == 7, "Invalid materialList");
     donations = addresses;
     for(uint256 i; i < addresses.length; i++){
       materialToDonation[i] = addresses[i];

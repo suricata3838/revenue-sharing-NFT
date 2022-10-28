@@ -2,16 +2,16 @@ const hre = require("hardhat");
 
 const name = "MitamaHolderPass"
 const symbol = "MHP"
-const uri = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/ipfs/holderPass_metadata/"
+const test_baseURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/ipfs/holderPass_metadata/"
+const baseURI = "ipfs://QmcbszmyqbrgSvihEhEDG1YbzKguwkMbT6Ed4Zz2jhxcse/"
 // `baseURI` + gold = metadata of the gold pass
 // `baseURI` + silver = metadata of the silver pass
 
 const arguments = [
     name,
     symbol,
-    uri
+    baseURI
 ]
-console.log(arguments);
 module.exports = [
     ...arguments
 ]
@@ -20,7 +20,7 @@ async function deployHolderPass () {
     const [deployer] = await hre.ethers.getSigners();
     const HolderPass = await hre.ethers.getContractFactory("HolderPass");
     const holderPass = await HolderPass.deploy(
-        name,symbol, uri);
+        name,symbol, baseURI);
     await holderPass.deployed();
     console.log("Contract deployed to:", holderPass.address, "from ", deployer.address);
 }
@@ -33,13 +33,13 @@ const main = async () => {
     }
 }
 
-// main().catch((error) => {
-//     console.error(error);
-//     process.exitCode = 1;
-//   });
+main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 
-/*
- * Recent contract address on Goerli
- **/
-//  PASS: 0x9EE05d60d3FAf8735e9fd9CC68E3f9F25537Cd84
-//  latest PASS: 0xacad68aF067A557092634c6d5Bc528db27B613e6
+/**
+ * on Mumbai
+ */
+// https://mumbai.polygonscan.com/address/0x48056293f0DE95B674eD7F8Ef56483Da088D3272#code
+// Latest: https://mumbai.polygonscan.com/address/0x6f55804B6EFD2c107adFC202dB05e10a5DbA38F1#code

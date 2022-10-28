@@ -1,19 +1,30 @@
 const hre = require("hardhat");
-const { keccak256, toUtf8Bytes } = hre.ethers.utils;
+const { keccak256 } = hre.ethers.utils;
 const { MerkleTree } = require('merkletreejs')
 
-const baseURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/Mitama_dir/";
+// TODO* NEED "/" at the last of baseURI!
+const test_baseURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/Mitama_dir/";
 const test_unrevealedURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/ipfs/Mitama_dir/egg_meta";
 const unrevealedURI = "https://gateway.pinata.cloud/ipfs/QmYhT8vFpz4bq6QCaRDzei6w4X8AbwTrbutvxPJ3HexUeN"
+// const unrevealedURI = "ipfs://QmYhT8vFpz4bq6QCaRDzei6w4X8AbwTrbutvxPJ3HexUeN";
 
-const arguments = test_unrevealedURI; //unrevealedURI;
-module.exports = arguments;
+const arguments = unrevealedURI;
+module.exports = [arguments];
 
 async function deployMitama() {
     const [deployer] = await hre.ethers.getSigners();
-    const Mitama = await hre.ethers.getContractFactory("MitamaTest");
+    const Mitama = await hre.ethers.getContractFactory("Mitama");
+    const mitama = await Mitama.deploy(unrevealedURI); 
+    console.log("Mitama txHash:", mitama.deployTransaction.hash);
+    await mitama.deployed();
+    console.log("Contract deployed to:", mitama.address, "from ", deployer.address);
+}
+
+async function deployMitamaTest() {
+    const [deployer] = await hre.ethers.getSigners();
+    const Mitama = await hre.ethers.getContractFactory("Mitama"); 
     const mitama = await Mitama.deploy(test_unrevealedURI);
-    console.log("Mitama:", mitama.deployTransaction.hash);
+    console.log("Mitama txHash:", mitama.deployTransaction.hash);
     await mitama.deployed();
     console.log("Contract deployed to:", mitama.address, "from ", deployer.address);
 }
@@ -57,9 +68,18 @@ const setupWL = async() => {
     // await dynamicWLNFT.setPublicWhitelistMerkleRoot(merkleRoot);
 }
 
+const verify = async() => {
+    await hre.run(`verify:verify`, { 
+        address: "0x40f5434cbED8ac30a0A477a7aFc569041B3d2012", 
+        constructorArguments: [unrevealedURI], 
+      });
+}
+
 const main = async () => {
     try{
-        await deployMitama();
+        // await deployMitama();
+        // await deployMitamaTest();
+        // await verify();
         // await setupWL();
     }catch(e){
         console.error(e);
@@ -72,6 +92,6 @@ main().catch((error) => {
 });
 
 /*
- * Recent contract address on Goerli
+ * Recent contract address on Mumbai
  **/
-//  DAWLNFT: 0xcDe7a88a1dada60CD5c888386Cc5C258D85941Dd
+//  Mitama: https://mumbai.polygonscan.com/address/0x1CDE6E7f0BB09FFD40e366cAd206a663D81614b3#code

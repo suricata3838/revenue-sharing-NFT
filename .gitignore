@@ -5,6 +5,9 @@ coverage.json
 typechain
 typechain-types
 
+# secret file
+_file/
+
 # Hardhat files
 cache
 artifacts

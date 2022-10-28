@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-//////////////////////////////////////////////////////////////////////////////////////////
-// ___  ____ _                          _   _       _     _            ______             
-// |  \/  (_) |                        | | | |     | |   | |           | ___ \            
-// | .  . |_| |_ __ _ _ __ ___   __ _  | |_| | ___ | | __| | ___ _ __  | |_/ /_ _ ___ ___ 
-// | |\/| | | __/ _` | '_ ` _ \ / _` | |  _  |/ _ \| |/ _` |/ _ \ '__| |  __/ _` / __/ __|
-// | |  | | | || (_| | | | | | | (_| | | | | | (_) | | (_| |  __/ |    | | | (_| \__ \__ \
-// \_|  |_/_|\__\__,_|_| |_| |_|\__,_| \_| |_/\___/|_|\__,_|\___|_|    \_|  \__,_|___/___/                 
-//                                                                            
-//////////////////////////////////////////////////////////////////////////////////////////
+/**
+ * ___  ____ _                          _   _       _     _            ______             
+ * |  \/  (_) |                        | | | |     | |   | |           | ___ \            
+ * | .  . |_| |_ __ _ _ __ ___   __ _  | |_| | ___ | | __| | ___ _ __  | |_/ /_ _ ___ ___ 
+ * | |\/| | | __/ _` | '_ ` _ \ / _` | |  _  |/ _ \| |/ _` |/ _ \ '__| |  __/ _` / __/ __|
+ * | |  | | | || (_| | | | | | | (_| | | | | | (_) | | (_| |  __/ |    | | | (_| \__ \__ \
+ * \_|  |_/_|\__\__,_|_| |_| |_|\__,_| \_| |_/\___/|_|\__,_|\___|_|    \_|  \__,_|___/___/     
+ * 
+ * produced by http://mitama-mint.com/
+ * inspired by Kiwami.sol
+ * written by zkitty.eth
+ */
 
 import { ERC165, IERC165, ERC165Storage }  from "@solidstate/contracts/introspection/ERC165.sol";
 import { IERC1155 } from "@solidstate/contracts/interfaces/IERC1155.sol";
@@ -75,6 +78,13 @@ contract HolderPass is SolidStateERC1155, AccessControl {
            // Silver Pass
             _mint(account, id, 1, '');           
         }
+    }
+
+    /**
+     * Update baseURI
+     */
+    function setBaseURI(string memory _baseURI) public onlyRole(MINTER_ROLE) {
+        baseURI = _baseURI;
     }
 
     /**
@@ -198,7 +208,7 @@ contract HolderPass is SolidStateERC1155, AccessControl {
             }
         }
     }
-    
+
     /**
      * Internal functions
      */

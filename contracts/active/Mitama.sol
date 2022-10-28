@@ -255,7 +255,6 @@ contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist, ReentrancyGuard{
 
         if(totalRefund > address(this).balance) revert('Contract runs out of funds.');
         payable(msg.sender).transfer(totalRefund);
-
     }
 
 
