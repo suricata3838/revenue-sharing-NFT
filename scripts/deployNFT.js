@@ -5,10 +5,10 @@ const { MerkleTree } = require('merkletreejs')
 // TODO* NEED "/" at the last of baseURI!
 const test_baseURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/pinata/Mitama_dir/";
 const test_unrevealedURI = "https://raw.githubusercontent.com/suricata3838/revenue-sharing-NFT/main/ipfs/Mitama_dir/egg_meta";
-const unrevealedURI = "https://gateway.pinata.cloud/ipfs/QmYhT8vFpz4bq6QCaRDzei6w4X8AbwTrbutvxPJ3HexUeN"
-// const unrevealedURI = "ipfs://QmYhT8vFpz4bq6QCaRDzei6w4X8AbwTrbutvxPJ3HexUeN";
+// const unrevealedURI = "https://gateway.pinata.cloud/ipfs/QmYhT8vFpz4bq6QCaRDzei6w4X8AbwTrbutvxPJ3HexUeN"
+const unrevealedURI = "ipfs://QmVQcu2Q1YEBVAWEJd1HvQbR6ndrwU6e5Aq5n2WxtRtxDY";
 
-const arguments = unrevealedURI;
+const arguments = test_unrevealedURI;
 module.exports = [arguments];
 
 async function deployMitama() {
@@ -22,7 +22,7 @@ async function deployMitama() {
 
 async function deployMitamaTest() {
     const [deployer] = await hre.ethers.getSigners();
-    const Mitama = await hre.ethers.getContractFactory("Mitama"); 
+    const Mitama = await hre.ethers.getContractFactory("MitamaTest"); 
     const mitama = await Mitama.deploy(test_unrevealedURI);
     console.log("Mitama txHash:", mitama.deployTransaction.hash);
     await mitama.deployed();
@@ -33,31 +33,37 @@ const setupWL = async() => {
 
     /* Whitelist Preparation*/
     const accounts = [
-        "0x5B38Da6a701c568545dCfcB03FcB875f56beddC4",
-        "0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2",
-        "0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db",
-        "0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaB"
+        "0xcDe7a88a1dada60CD5c888386Cc5C258D85941Dd", //Norika
+        "0xabf54b4da815309cB17055c7D4E5a31cDE5f1aBe",
+        "0x0Fb59f9E958c13f99fadF0062d4E2BAe6b38aEe8",
+        "0x78879eaB33D4CB076799a84209fe028E7CFeAbfB",
+        "0x4a5906151959d06B2b469f74Ce9084F6c1F723C5",
+        "0xAadf31D980aEa12A68A4080Ff0E21E0Eeb4f116D"
     ];
-    const whitelisted = accounts.slice(0, 3)
-    const notWhitelisted = accounts.slice(3, 4)
     const _hash = (_address) => {
         return keccak256(_address);
     }
 
     // prep tree and root
-    const leaves = whitelisted.map(account => _hash(account))
+    const leaves = accounts.map(account => _hash(account))
     const tree = new MerkleTree(leaves, keccak256, { sort: true })
     const merkleRoot = tree.getHexRoot()// stored publically on smartcontract
     console.log("merkleRoot:", merkleRoot);
 
     //get MerkleProof
-    const merkleProof_0 = tree.getHexProof(_hash(whitelisted[0]))
+    const merkleProof_0 = tree.getHexProof(_hash(accounts[0]))
     console.log("merkleProof_0:", merkleProof_0);
-    const merkleProof_1 = tree.getHexProof(_hash(whitelisted[1]))
+    const merkleProof_1 = tree.getHexProof(_hash(accounts[1]))
     console.log("merkleProof_1:", merkleProof_1);
-    const merkleProof_2 = tree.getHexProof(_hash(whitelisted[2]))
+    const merkleProof_2 = tree.getHexProof(_hash(accounts[2]))
     console.log("merkleProof_2:", merkleProof_2);
-    
+    const merkleProof_3 = tree.getHexProof(_hash(accounts[3]))
+    console.log("merkleProof_3:", merkleProof_3);
+    const merkleProof_4 = tree.getHexProof(_hash(accounts[4]))
+    console.log("merkleProof_4:", merkleProof_4);
+    const merkleProof_5 = tree.getHexProof(_hash(accounts[5]))
+    console.log("merkleProof_5:", merkleProof_5);
+
     // Verify
     console.log("leaves[0]:", leaves[0]);
     console.log("Result:", tree.verify(merkleProof_0, leaves[0], merkleRoot))
@@ -80,7 +86,7 @@ const main = async () => {
         // await deployMitama();
         // await deployMitamaTest();
         // await verify();
-        // await setupWL();
+        await setupWL();
     }catch(e){
         console.error(e);
     }
@@ -94,7 +100,8 @@ main().catch((error) => {
 /*
  * Recent contract address on Mumbai
  **/
-//  Mitama: https://mumbai.polygonscan.com/address/0x1CDE6E7f0BB09FFD40e366cAd206a663D81614b3#code
+//  Mitama: https://mumbai.polygonscan.com/address/0x228746DE5026286ff7403dfafbF08BE70e08cf67
+// CheapMitama: https://mumbai.polygonscan.com/address/0xC31331f24207f2FaBe69172D29751eE5ccb38D25#code
 
 /**
  * Mainnet

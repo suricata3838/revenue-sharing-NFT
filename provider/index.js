@@ -12,15 +12,16 @@ const {PRIVKEY, GOERLI_API, GOERLI_APIKEY} = process.env;
 const firebaseConfig = require("../firebase-config.json");
 
 const _network = "goerli";
-const TestDAWLNFTAbi = require("../artifacts/contracts/active/TestDAWLNFT.sol/TestDAWLNFT.json");
-const TestDAWLNFTAddress = '0x931bf686e0768cfd7210e830a0b371e6b0e48af5'
+const MitamaAbi = require("../artifacts/contracts/active/Mitama.sol/Mitama.json");
+const MitamaAddress = '0x40f5434cbED8ac30a0A477a7aFc569041B3d2012'
 const RevenueShareAbi  =  require ("../artifacts/contracts/active/RevenueShare.sol/RevenueShare.json");
-const RevenueShareAddress = '0xB595a5bF216b9E185037ABe884A8bBe48c78d478';
+const RevenueShareAddress = '0x811BC1fFC4a198F90193D91729ca4ab90241E940';
 const RevenueShareForDonationAbi = require ("../artifacts/contracts/active/RevenueShareForDonation.sol/RevenueShareForDonation.json");
-const RevenueShareForDonationAddress = '0x14B71a54DF5007de2bEe3c16892D6da7f0D459B8';
+const RevenueShareForDonationAddress = '0x1CDE6E7f0BB09FFD40e366cAd206a663D81614b3';
 const HolderPassAbi = require ("../artifacts/contracts/active/HolderPass.sol/HolderPass.json");
-const HolderPassAddress = '0xacad68aF067A557092634c6d5Bc528db27B613e6';
-const WETH_Address = '0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6';
+const HolderPassAddress = '0xA26cdC2B089a36FF722d76969b96A4AD8D4E6930';
+// on Ethereum mainnet
+const WETH_Address = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 
 const tokenLevelList = [0, 0.01, 0.5, 1.0, 3.0, 5.0]; //ETH for LevelUp of DynamicNFT
 

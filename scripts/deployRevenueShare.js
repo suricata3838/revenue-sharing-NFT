@@ -1,5 +1,10 @@
 const {ethers, network} = require("hardhat");
+const { BigNumber } = require("bignumber.js");
+const { utils } = require("ethers");
 const materialIdList = require("../_file/materialIdList.json");
+const dotenv  = require ("dotenv");
+dotenv.config();
+const { ETH_APIKEY, PRIVKEY } = process.env;
 
 async function deployRevenueShare() {
     const [deployer] = await ethers.getSigners(network.config.accounts);
@@ -28,31 +33,85 @@ async function deployRevenueShareForDonation() {
   console.log("revenueShareForDonation deployed to:", revenueShareForDonation.address, "from ", deployer.address);
 }
 
+const getSigner = () => {
+  const network = ethers.providers.getNetwork("mainnet");
+  const alchemyProvider = new ethers.providers.AlchemyProvider(network, ETH_APIKEY);
+  const signer = new ethers.Wallet(PRIVKEY, alchemyProvider);
+  return signer;
+}
+
+const getContract = (_signer, address, abi) => {
+  const contractInst = new ethers.Contract(address, abi.abi, _signer);
+  const contractInstAddr = contractInst.attach(address);
+  return contractInstAddr;
+}
+
+const RevenueShareForDonationAbi = require ("../artifacts/contracts/active/RevenueShareForDonation.sol/RevenueShareForDonation.json");
+// Mumbai testnet
+// const RevenueShareForDonationAddress = '0x32A9b2c4Ef7ac84f39962834AB795dC2B181a21A';
+// Mainnet
+const RevenueShareForDonationAddress = '0x1CDE6E7f0BB09FFD40e366cAd206a663D81614b3';
+
 async function setTokenMaterial() {
-  const address = "";
-  const revenueShareForDonation = "";
-  for (let i = 0; i < 18; i++) {
-    const tx = await revenueShareForDonation.setTokenToMaterial(materialIdList.slice(i * 500, (i + 1) * 500), i);
-    await tx.wait()
-    console.log(`done: ${i}: ${tx.hash}`)
-}  
+  const signer =  getSigner();
+  const revenueShareForDonation = getContract(
+    signer,
+    RevenueShareForDonationAddress, 
+    RevenueShareForDonationAbi
+  );
+  const addrss =  await signer.getAddress();
+  const feeData = await ethers.provider.getFeeData()
+  const nonce = await signer.getTransactionCount()
+  const gasLimit = await revenueShareForDonation.estimateGas.setTokenToMaterial(materialIdList.slice(0, 500), 0, {
+    from: addrss
+  })
+
+  console.log("feeData.maxFeePerGas:", feeData.maxFeePerGas.toString());
+  console.log("feeData.maxFeePerGas:", feeData.maxPriorityFeePerGas.toString());
+  console.log("gasLimit:", gasLimit);
+
+  // done: [0]
+  // for (let i = 1; i < 2; i++) {
+    let i = 1;
+    try {
+      console.log(`try ${i}`);
+      const tx = await revenueShareForDonation.setTokenToMaterial(materialIdList.slice(i * 500, (i + 1) * 500), i);
+        // { maxFeePerGas: new BigNumber(feeData.maxFeePerGas.toString()).multipliedBy(new BigNumber("1.5")).toString(),
+          // maxPriorityFeePerGas: new BigNumber(feeData.maxPriorityFeePerGas.toString()).multipliedBy(new BigNumber("1.5")).toString(),
+          // gasLimit: gasLimit.mul(2).toString(),
+          // nonce: nonce + i
+        // });
+      await tx.wait()
+      console.log(`done: ${i}: ${tx.hash}`) 
+    }catch(e){
+      console.log(JSON.parse(e.error.error.body).error.message)
+    }
+  // }
+}
+
+const testCalc = () => {
+  const buf = new BigNumber("1.5")
+  console.log(typeof(buf));
+  const bufbuf = buf.multipliedBy(buf);
+  console.log(bufbuf);
 }
 
 async function main() {
   try {
   // await deployRevenueShare();
-  await deployRevenueShareForDonation();
-  // await setTokenMaterial();
+  // await deployRevenueShareForDonation();
+  await setTokenMaterial();
+  // testCalc();
   } catch(e) {
-    console.error(e)
+    console.log(e)
   }
 
 }
 
-// main().catch((error) => {
-//     console.error(error);
-//     process.exitCode = 1;
-//   });
+main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 
 module.exports = [
   materialIdList

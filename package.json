@@ -28,6 +28,8 @@
   "dependencies": {
     "@opensea/stream-js": "^0.0.20",
     "@openzeppelin/contracts": "^4.7.3",
+    "bignumber.js": "^9.1.0",
+    "bignunmberjs": "^0.0.1-security.7",
     "firebase": "^9.9.2",
     "firebase-admin": "^11.0.1",
     "ws": "^8.8.1"

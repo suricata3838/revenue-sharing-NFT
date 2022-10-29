@@ -6,7 +6,7 @@ typechain
 typechain-types
 
 # secret file
-_file/
+./_file/
 
 # Hardhat files
 cache

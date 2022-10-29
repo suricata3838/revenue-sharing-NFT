@@ -3,12 +3,10 @@ require ("@nomiclabs/hardhat-etherscan");
 require('hardhat-contract-sizer');
 require("hardhat-gas-reporter");
 require("dotenv").config();
-const { 
-  ETH_APIKEY,
+const {
   ETH_API, 
   POLYGON_API, 
-  MUMBAI_API, 
-  GOERLI_APIKEY, 
+  MUMBAI_API,
   ETHSCAN_APIKEY, 
   POLYGONSCAN_APIKEY, 
   GOERLI_API, 
@@ -26,7 +24,7 @@ module.exports = {
     },
     mainnet: {
       url: ETH_API,
-      accounts: [`0x${PRIVKEY}`]   
+      accounts: [`0x${PRIVKEY}`]
     },
     goerli: {
       url: GOERLI_API,

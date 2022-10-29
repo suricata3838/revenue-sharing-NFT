@@ -22,25 +22,26 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MerkleWhitelist.sol";
 import "./DAHelper.sol";
 
-contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist, ReentrancyGuard{
+contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist, ReentrancyGuard{
     using Strings for uint256;
     using Strings for uint8;
 
     /**
      * Mitama Dutch Auction configration: configured by the team at deployment.
+     * For testnet testing
      */
-    uint256 public DA_STARTING_PRICE = 0.25 ether;
-    uint256 public DA_ENDING_PRICE = 0.07 ether;
+    uint256 public DA_STARTING_PRICE = 0.000025 ether;
+    uint256 public DA_ENDING_PRICE = 0.000007 ether;
     // Decrement 0.015 ether every 1 hours ~= 0.00002 ether every 5 sec.
-    uint256 public DA_DECREMENT = 0.00002 ether;
+    uint256 public DA_DECREMENT = 0.000000002 ether;
     uint256 public DA_DECREMENT_FREQUENCY = 5;
     // Mint starts: Sunday, October 30, 2022 9:00:00 PM GMT+09:00: 1667131200
-    uint256 public DA_STARTING_TIMESTAMP = 1667131200;
+    uint256 public DA_STARTING_TIMESTAMP = 1666921257;
     uint256 public DA_QUANTITY = 8580;
     // wait 1 week:
     uint256 public WAITING_FINAL_WITHDRAW = 60*60*24*7;
     // Withdraw address
-    address public TEAM_WALLET = 0x7a1Bf181867703d6Fe21BaDf71e68D704751672A;
+    address public TEAM_WALLET = 0xabf54b4da815309cB17055c7D4E5a31cDE5f1aBe;
 
     /**
      * Mitama NFT configuration: configured by the team at deployment.
