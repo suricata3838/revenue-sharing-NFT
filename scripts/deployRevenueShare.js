@@ -1,7 +1,7 @@
 const {ethers, network} = require("hardhat");
 const { BigNumber } = require("bignumber.js");
 const { utils } = require("ethers");
-const materialIdList = require("../_file/materialIdList.json");
+const materialIdList = require("../__file/materialIdList.json");
 const dotenv  = require ("dotenv");
 dotenv.config();
 const { ETH_APIKEY, PRIVKEY } = process.env;
