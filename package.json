@@ -13,6 +13,7 @@
     "@nomiclabs/hardhat-ethers": "^2.1.1",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
     "@solidstate/contracts": "^0.0.45",
+    "@types/phoenix": "^1.5.4",
     "assert": "^2.0.0",
     "chai": "^4.3.6",
     "chai-as-promised": "^7.1.1",

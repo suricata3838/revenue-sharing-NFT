@@ -1,5 +1,5 @@
-const { OpenSeaStreamClient, Network }= require('@opensea/stream-js');
-const  { WebSocket }  = require ('ws');
+const { OpenSeaStreamClient, Network, LogLevel }= require('@opensea/stream-js');
+const { WebSocket }  = require ('ws');
 const { initializeApp }  = require ("firebase/app");
 const { getFirestore, Timestamp }  = require ("firebase/firestore");
 const { collection, setDoc, addDoc, getDocs, where, query, orderBy, limit }  = require ("firebase/firestore");
@@ -18,7 +18,7 @@ const {
 } = process.env;
 const firebaseConfig = require("../firebase-config.json");
 
-const network = "mainnet";
+const NETWORK = "mainnet";
 const MitamaAbi = require("../artifacts/contracts/active/Mitama.sol/Mitama.json");
 const MitamaAddress = '0x40f5434cbED8ac30a0A477a7aFc569041B3d2012'
 const RevenueShareAbi  =  require ("../artifacts/contracts/active/RevenueShare.sol/RevenueShare.json");
@@ -33,10 +33,9 @@ const WETH_Address = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const tokenLevelList = [0, 0.01, 0.5, 1.0, 3.0, 5.0]; //ETH for LevelUp of DynamicNFT
 
 const signer = () => {
-  const network = ethers.providers.getNetwork(_network);
+  const network = ethers.providers.getNetwork(NETWORK);
   const alchemyProvider = new ethers.providers.AlchemyProvider(network, MAINNET_APIKEY);
   const signer = new ethers.Wallet(PRIVKEY, alchemyProvider);
-  console.log("signer:", signer)
   return signer;
 }
 
@@ -308,33 +307,34 @@ const main = async (event) => {
     maker_address: makerAddress
   } = parseItemSoldEvent(event);
   const priceLastSold = await getItemPriceLastSold(tokenId);
-  console.log("current-vs-pre:", currentPrice, " vs ", priceLastSold);
-  if(isPriceRaised(currentPrice, priceLastSold)) {
-  // if(true){
-    await injectItem(parseItemSoldEvent(event));
-    const fetchedHolderList = await fetchHolderList(tokenId);
-    console.log("holderLength:", fetchedHolderList.length)
-    const holderList = fetchedHolderList.length > 0 ? fetchedHolderList : await getHolderList(tokenId);
-    console.log("holderList:", holderList);
-    await updateRequest(tokenId, holderList);
-    /**
-     * Need to deploy the good contract
-     * await updateRequestForDonation(tokenId);
-     */
-    /* PassHolder will get the royalty at the next round of itemSold event, not this round. */
-    await mintPass(tokenId, makerAddress);
-  };
 
-  console.log("isLevelRaised", isLevelRaised(currentPrice, priceLastSold));
-  if(isLevelRaised(currentPrice, priceLastSold)) {
-    const level = getTokenLevel(currentPrice);
-    console.log("current level:", level);
-    try{
-      await updateTokenLevel(tokenId, level);// call updateTokenLevel(uint256 tikenId, uint8 level) of MitamaNFT
-    }catch(e){
-      console.log(e)
-    }
-  }
+  // console.log("current> pre:", isPriceRaised(currentPrice, priceLastSold));
+  // if(isPriceRaised(currentPrice, priceLastSold)) {
+  // // if(true){
+  //   await injectItem(parseItemSoldEvent(event));
+  //   const fetchedHolderList = await fetchHolderList(tokenId);
+  //   console.log("holderLength:", fetchedHolderList.length)
+  //   const holderList = fetchedHolderList.length > 0 ? fetchedHolderList : await getHolderList(tokenId);
+  //   console.log("holderList:", holderList);
+  //   await updateRequest(tokenId, holderList);
+  //   /**
+  //    * Need to deploy the good contract
+  //    * await updateRequestForDonation(tokenId);
+  //    */
+  //   /* PassHolder will get the royalty at the next round of itemSold event, not this round. */
+  //   await mintPass(tokenId, makerAddress);
+  // };
+
+  // console.log("isLevelRaised", isLevelRaised(currentPrice, priceLastSold));
+  // if(isLevelRaised(currentPrice, priceLastSold)) {
+  //   const level = getTokenLevel(currentPrice);
+  //   console.log("current level:", level);
+  //   try{
+  //     await updateTokenLevel(tokenId, level);// call updateTokenLevel(uint256 tikenId, uint8 level) of MitamaNFT
+  //   }catch(e){
+  //     console.log(e)
+  //   }
+  // }
 }
 
 // await injectItem(parseItemSoldEvent(sampleEvent));
@@ -344,16 +344,18 @@ const main = async (event) => {
  */
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-console.log(app)
 // Initialize Cloud Firestore and get a reference to the service
 const db = getFirestore(app);
 
+const logError = (e) => {console.log(`Error: ${JSON.stringify(e)}`)}
 const client = new OpenSeaStreamClient({
     token: 'openseaApiKey',
-    network: Network.MAINNET,
+    network: Network.TESTNET,
     connectOptions: {
       transport: WebSocket
-    }
+    },
+    onError: logError,
+    logLevel: LogLevel.WARN
   });
 
 main(getEvent(0, 0.51));
@@ -361,7 +363,12 @@ main(getEvent(0, 0.51));
 /**
  * Event Watcher to watch onItemSold of Opensea
  */
-client.onItemSold('mitama-mint', (e) => main(e));
+client.connect();
+console.log(client)
+client.onItemSold('mitama-mint', (e) => {
+  console.log(e)
+  main(e)
+});
 
 // onEvent: WETH is transfered to this contract
 // run revenueShare.getWETHbalance();
