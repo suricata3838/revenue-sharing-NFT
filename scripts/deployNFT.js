@@ -83,10 +83,10 @@ const verify = async() => {
 
 const main = async () => {
     try{
-        // await deployMitama();
+        await deployMitama();
         // await deployMitamaTest();
         // await verify();
-        await setupWL();
+        // await setupWL();
     }catch(e){
         console.error(e);
     }

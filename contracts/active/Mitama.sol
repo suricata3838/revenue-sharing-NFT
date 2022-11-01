@@ -22,7 +22,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./MerkleWhitelist.sol";
 import "./DAHelper.sol";
 
-contract MitamaTest is ERC721A, ERC2981, Ownable, MerkleWhitelist, ReentrancyGuard{
+contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist, ReentrancyGuard{
     using Strings for uint256;
     using Strings for uint8;
 
