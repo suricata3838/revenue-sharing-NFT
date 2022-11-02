@@ -308,33 +308,32 @@ const main = async (event) => {
   } = parseItemSoldEvent(event);
   const priceLastSold = await getItemPriceLastSold(tokenId);
 
-  // console.log("current> pre:", isPriceRaised(currentPrice, priceLastSold));
-  // if(isPriceRaised(currentPrice, priceLastSold)) {
-  // // if(true){
-  //   await injectItem(parseItemSoldEvent(event));
-  //   const fetchedHolderList = await fetchHolderList(tokenId);
-  //   console.log("holderLength:", fetchedHolderList.length)
-  //   const holderList = fetchedHolderList.length > 0 ? fetchedHolderList : await getHolderList(tokenId);
-  //   console.log("holderList:", holderList);
-  //   await updateRequest(tokenId, holderList);
-  //   /**
-  //    * Need to deploy the good contract
-  //    * await updateRequestForDonation(tokenId);
-  //    */
-  //   /* PassHolder will get the royalty at the next round of itemSold event, not this round. */
-  //   await mintPass(tokenId, makerAddress);
-  // };
+  console.log("current> pre:", isPriceRaised(currentPrice, priceLastSold));
+  if(isPriceRaised(currentPrice, priceLastSold)) {
+    await injectItem(parseItemSoldEvent(event));
+    const fetchedHolderList = await fetchHolderList(tokenId);
+    console.log("holderLength:", fetchedHolderList.length)
+    const holderList = fetchedHolderList.length > 0 ? fetchedHolderList : await getHolderList(tokenId);
+    console.log("holderList:", holderList);
+    await updateRequest(tokenId, holderList);
+    /**
+     * Need to deploy the good contract
+     * await updateRequestForDonation(tokenId);
+     */
+    /* PassHolder will get the royalty at the next round of itemSold event, not this round. */
+    await mintPass(tokenId, makerAddress);
+  };
 
-  // console.log("isLevelRaised", isLevelRaised(currentPrice, priceLastSold));
-  // if(isLevelRaised(currentPrice, priceLastSold)) {
-  //   const level = getTokenLevel(currentPrice);
-  //   console.log("current level:", level);
-  //   try{
-  //     await updateTokenLevel(tokenId, level);// call updateTokenLevel(uint256 tikenId, uint8 level) of MitamaNFT
-  //   }catch(e){
-  //     console.log(e)
-  //   }
-  // }
+  console.log("isLevelRaised", isLevelRaised(currentPrice, priceLastSold));
+  if(isLevelRaised(currentPrice, priceLastSold)) {
+    const level = getTokenLevel(currentPrice);
+    console.log("current level:", level);
+    try{
+      await updateTokenLevel(tokenId, level);// call updateTokenLevel(uint256 tikenId, uint8 level) of MitamaNFT
+    }catch(e){
+      console.log(e)
+    }
+  }
 }
 
 // await injectItem(parseItemSoldEvent(sampleEvent));
