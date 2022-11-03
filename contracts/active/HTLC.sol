@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract HTLC is Ownable, ReentrancyGuard {
     uint256 public startTime;
-    uint256 public lockTime = 172800 seconds; // 48 hours
+    uint256 public lockTime = 86400 seconds; // 48 hours
     address payable public whiteHat;
     address public newerAddress;
     uint256 public amount;
@@ -61,4 +61,7 @@ contract HTLC is Ownable, ReentrancyGuard {
         amount = 0;
         startTime = 0;
     }
+    /**
+     * Make sure: all variables are correct when we deploy the contract.
+     */
 }
