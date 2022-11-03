@@ -17,21 +17,22 @@ describe('HTLC', () => {
         await mitama.deployed();
 
         const HTLC = await ethers.getContractFactory("HTLC")
-        const contract = await HTLC.deploy(whiteHat.address, mitama.address, newOwner.address)
-        await contract.deployed();
+        const htlc = await HTLC.deploy(whiteHat.address, mitama.address, newOwner.address)
+        await htlc.deployed();
 
-        await contract.fund({ value: ethers.utils.parseEther('20') })
+        await htlc.fund({ value: ethers.utils.parseEther('20') })
         
-        assert.equal((await contract.amount()).toString(), ethers.utils.parseEther('20'), 'amount should be correct')
+        assert.equal((await htlc.amount()).toString(), ethers.utils.parseEther('20'), 'amount should be correct')
 
-        await expect(contract.connect(accounts[1]).fund({ value: ethers.utils.parseEther('20') })).to.be.rejected
+        await expect(htlc.connect(accounts[1]).fund({ value: ethers.utils.parseEther('0.1') })).to.be.rejectedWith('Ownable: caller is not the owner')
+        await expect(htlc.connect(whiteHat).withdraw()).to.be.rejectedWith('Ownable: caller is not the owner')
+        
+        await mitama.connect(whiteHat).transferOwnership(htlc.address)
 
-        await mitama.connect(whiteHat).transferOwnership(contract.address)
+        await expect(htlc.withdraw()).to.be.rejectedWith('Only Provided address can withdraw...')
+        await htlc.connect(whiteHat).withdraw()
 
-        await expect(contract.withdraw()).to.be.rejectedWith('Only Provided address can withdraw...')
-        await contract.connect(whiteHat).withdraw()
-
-        assert.equal((await contract.amount()).toString(), '0', 'amount should be zero')
+        assert.equal((await htlc.amount()).toString(), '0', 'amount should be zero')
         assert.equal(await mitama.owner(), newOwner.address, 'new mitama owner should be set after withdrawing')
     })
 
@@ -46,25 +47,25 @@ describe('HTLC', () => {
       await mitama.deployed();
 
       const HTLC = await ethers.getContractFactory("HTLC")
-      const contract = await HTLC.deploy(whiteHat.address, mitama.address, newOwner.address)
-      await contract.deployed();
+      const htlc = await HTLC.deploy(whiteHat.address, mitama.address, newOwner.address)
+      await htlc.deployed();
 
-      await contract.fund({ value: ethers.utils.parseEther('20') })
+      await htlc.fund({ value: ethers.utils.parseEther('20') })
       const ownerBalance = await accounts[0].getBalance()
       
-      assert.equal((await contract.amount()).toString(), ethers.utils.parseEther('20'), 'amount should be correct')
+      assert.equal((await htlc.amount()).toString(), ethers.utils.parseEther('20'), 'amount should be correct')
 
-      await expect(contract.connect(accounts[1]).fund({ value: ethers.utils.parseEther('20') })).to.be.rejected
+      await expect(htlc.connect(accounts[1]).fund({ value: ethers.utils.parseEther('20') })).to.be.rejected
 
-      await mitama.connect(whiteHat).transferOwnership(contract.address)
+      await mitama.connect(whiteHat).transferOwnership(htlc.address)
 
-      await expect(contract.resetContractOwnerAndRefund()).to.be.rejectedWith('too early')
-      await expect(contract.refund()).to.be.rejectedWith('too early')
+      await expect(htlc.resetContractOwnerAndRefund()).to.be.rejectedWith('too early')
+      await expect(htlc.refund()).to.be.rejectedWith('too early')
 
       // increase block.timestamp
       await ethers.provider.send("evm_increaseTime", [172800])
-      await contract.resetContractOwnerAndRefund()
-      assert.equal((await contract.amount()).toString(), '0', 'amount should be correct')
+      await htlc.resetContractOwnerAndRefund()
+      assert.equal((await htlc.amount()).toString(), '0', 'amount should be correct')
 
       assert.equal(await mitama.owner(), newOwner.address, 'new mitama owner should be set after withdrawing')
       expect((await accounts[0].getBalance()).gt(ownerBalance)).to.be.true
@@ -81,24 +82,41 @@ describe('HTLC', () => {
       await mitama.deployed();
 
       const HTLC = await ethers.getContractFactory("HTLC")
-      const contract = await HTLC.deploy(whiteHat.address, mitama.address, newOwner.address)
-      await contract.deployed();
+      const htlc = await HTLC.deploy(whiteHat.address, mitama.address, newOwner.address)
+      await htlc.deployed();
 
-      await contract.fund({ value: ethers.utils.parseEther('20') })
+      await htlc.fund({ value: ethers.utils.parseEther('20') })
       const ownerBalance = await accounts[0].getBalance()
       
-      assert.equal((await contract.amount()).toString(), ethers.utils.parseEther('20'), 'amount should be correct')
+      assert.equal((await htlc.amount()).toString(), ethers.utils.parseEther('20'), 'amount should be correct')
 
-      await expect(contract.connect(accounts[1]).fund({ value: ethers.utils.parseEther('20') })).to.be.rejected
+      await expect(htlc.connect(accounts[1]).fund({ value: ethers.utils.parseEther('20') })).to.be.rejected
 
-      await expect(contract.resetContractOwnerAndRefund()).to.be.rejectedWith('too early')
-      await expect(contract.refund()).to.be.rejectedWith('too early')
+      await expect(htlc.resetContractOwnerAndRefund()).to.be.rejectedWith('too early')
+      await expect(htlc.refund()).to.be.rejectedWith('too early')
 
       // increase block.timestamp
       await ethers.provider.send("evm_increaseTime", [172800])
-      await expect(contract.resetContractOwnerAndRefund()).to.be.rejected
+      await expect(htlc.resetContractOwnerAndRefund()).to.be.rejected
 
-      await contract.refund()
+      await htlc.refund()
       expect((await accounts[0].getBalance()).gt(ownerBalance)).to.be.true
+    })
+
+    it('None can transfer the ownership of HTLC contract', async () => {
+        const accounts = await ethers.getSigners()
+
+        const whiteHat = accounts[2]
+        const newOwner = accounts[1]
+        
+        const Mitama = await ethers.getContractFactory("Mitama")
+        const mitama = await Mitama.connect(whiteHat).deploy('abc')
+        await mitama.deployed();
+  
+        const HTLC = await ethers.getContractFactory("HTLC")
+        const htlc = await HTLC.deploy(whiteHat.address, mitama.address, newOwner.address)
+        await htlc.deployed();
+        
+        await expect(htlc.transferOwnership(newOwner.address)).to.be.rejectedWith('Not allowed.')
     })
 })
