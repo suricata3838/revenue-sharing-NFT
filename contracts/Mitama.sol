@@ -307,7 +307,7 @@ contract Mitama is ERC721A, ERC2981, Ownable, MerkleWhitelist, ReentrancyGuard{
     }
     
     /**
-     * House keeping funcitons
+     * House keeping functions
      */
     
     /* ERC721 Setters */
